@@ -227,6 +227,7 @@
       "rows": "{{filtered}} / {{total}} rows"
     },
     "noMatch": "No matching projects.",
+    "confirmDelete": "Are you sure you want to delete project \"{{name}}\"?",
     "reorderHint": "Drag the handle in the NO. column or use the up/down arrows. Your order is saved in this browser.",
     "dragProject": "Drag to reorder project",
     "moveUp": "Move project up",

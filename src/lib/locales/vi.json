@@ -227,6 +227,7 @@
       "rows": "{{filtered}} / {{total}} dòng"
     },
     "noMatch": "Không có dự án phù hợp.",
+    "confirmDelete": "Bạn có chắc chắn muốn xóa dự án \"{{name}}\" không?",
     "reorderHint": "Kéo biểu tượng ở cột NO. để đổi thứ tự, hoặc dùng mũi tên lên/xuống. Thứ tự được lưu riêng trên trình duyệt này.",
     "dragProject": "Kéo để đổi thứ tự dự án",
     "moveUp": "Di chuyển dự án lên",

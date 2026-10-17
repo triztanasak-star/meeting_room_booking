@@ -694,7 +694,12 @@ export default function WorksPage() {
                                   type="button"
                                   className="btn btn-sm btn-link text-danger"
                                   title={t('works.actions.delete')}
-                                  onClick={() => deleteWork.mutate(work.id)}
+                                  disabled={deleteWork.isPending}
+                                  onClick={() => {
+                                    if (window.confirm(t('works.confirmDelete', { name: work.task_name }))) {
+                                      deleteWork.mutate(work.id);
+                                    }
+                                  }}
                                 >
                                   <FiTrash2 />
                                 </button>
