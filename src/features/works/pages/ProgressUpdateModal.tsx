@@ -58,6 +58,14 @@ const ProgressUpdateModal = forwardRef<ProgressUpdateModalHandle, ProgressUpdate
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const showFinanceSection = true;
+    const paybackRatio = form.capex_amount !== null
+      && form.estimated_saving_per_year !== null
+      && form.estimated_saving_per_year > 0
+      ? form.capex_amount / form.estimated_saving_per_year
+      : null;
+    const paybackYears = paybackRatio !== null && Number.isFinite(paybackRatio)
+      ? Number(paybackRatio.toFixed(1))
+      : null;
 
     useImperativeHandle(ref, () => ({
       open: async (work: DigitalWork) => {
@@ -248,7 +256,7 @@ const ProgressUpdateModal = forwardRef<ProgressUpdateModalHandle, ProgressUpdate
           capex_amount: form.capex_amount,
           estimated_saving_per_year: form.estimated_saving_per_year,
           saving_is_estimated: form.saving_is_estimated,
-          payback_years: form.payback_years,
+          payback_years: paybackYears,
         };
 
         await onSubmit(workId, payload);
@@ -541,8 +549,8 @@ const ProgressUpdateModal = forwardRef<ProgressUpdateModalHandle, ProgressUpdate
                           type="number"
                           step="0.1"
                           className="form-control progress-modal-input"
-                          value={form.payback_years ?? ''}
-                          onChange={(e) => setForm({ ...form, payback_years: e.target.value ? Number(e.target.value) : null })}
+                          value={paybackYears?.toFixed(1) ?? ''}
+                          readOnly
                         />
                       </div>
 
