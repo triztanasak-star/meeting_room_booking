@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import AvatarPicker from '../../../components/AvatarPicker';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../../context/AuthContext';
@@ -9,6 +10,8 @@ export default function RegisterPage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [name, setName] = useState('');
+  const [avatar, setAvatar] = useState<string | null>(null);
+  const [avatarStatus, setAvatarStatus] = useState<'ready' | 'processing' | 'error'>('ready');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -20,6 +23,7 @@ export default function RegisterPage() {
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setError(null);
+    if (isSubmitting || avatarStatus !== 'ready') return;
 
     if (password.length < 8) {
       setError(t('auth.register.passwordTooShort'));
@@ -32,12 +36,12 @@ export default function RegisterPage() {
 
     setIsSubmitting(true);
     try {
-      await db.register(name, email, password);
+      await db.register(name, email, password, avatar);
       navigate('/login', { replace: true, state: { registered: true } });
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setError(message === 'Email already exists' ? t('auth.register.emailInUse') : t('auth.register.failed'));
+      setError(message === 'Email already exists' ? t('auth.register.emailInUse') : err instanceof Error && err.message === 'Avatar was not saved' ? t('avatar.notSaved') : message === 'Invalid avatar image' ? t('avatar.error') : t('auth.register.failed'));
     } finally {
       setIsSubmitting(false);
     }
@@ -49,6 +53,7 @@ export default function RegisterPage() {
         <h1 className="h4 mb-4 text-center">{t('auth.register.title')}</h1>
         {error && <div className="alert alert-danger" role="alert">{error}</div>}
         <form onSubmit={handleSubmit}>
+          <AvatarPicker name={name} value={avatar} onChange={setAvatar} onStatusChange={setAvatarStatus} disabled={isSubmitting} />
           <div className="mb-3">
             <label className="form-label" htmlFor="name">{t('auth.register.name')}</label>
             <input
@@ -96,7 +101,7 @@ export default function RegisterPage() {
               required
             />
           </div>
-          <button type="submit" className="btn btn-primary w-100" disabled={isSubmitting}>
+          <button type="submit" className="btn btn-primary w-100" disabled={isSubmitting || avatarStatus !== 'ready'}>
             {isSubmitting ? t('auth.register.submitting') : t('auth.register.submit')}
           </button>
         </form>

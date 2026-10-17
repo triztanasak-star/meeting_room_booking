@@ -1,3 +1,4 @@
+import useCompletionConfirmation from '../../../components/useCompletionConfirmation';
 import { useMemo, useState, useRef, useEffect, type FormEvent } from 'react';
 import { useCreateTaskPlan, useDeleteTaskPlan, useTaskPlans, useUpdateTaskPlan } from '../hooks/useWorks';
 import EmptyState from '../../../components/EmptyState';
@@ -10,6 +11,7 @@ const STATUS_LABEL: Record<TaskPlan['status'], string> = {
 };
 
 export default function TaskPlansPanel({ workId, canEdit }: { workId: number; canEdit: boolean }) {
+  const { confirmCompletion, dialog } = useCompletionConfirmation();
   const { data, isLoading } = useTaskPlans(workId);
   const createPlan = useCreateTaskPlan();
   const updatePlan = useUpdateTaskPlan(workId);
@@ -29,13 +31,28 @@ export default function TaskPlansPanel({ workId, canEdit }: { workId: number; ca
 
   const plans = useMemo(() => {
     const raw = data?.documents ?? [];
-    return [...raw].sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
+    return [...raw].sort((a, b) => (a.step_order - b.step_order) || (a.id ?? 0) - (b.id ?? 0));
   }, [data]);
 
   const averagePercent = useMemo(() => {
     if (plans.length === 0) return null;
     return Math.round(plans.reduce((sum, p) => sum + p.progress_percent, 0) / plans.length);
   }, [plans]);
+
+  const saveProgress = async (plan: TaskPlan, value: number) => {
+    if (!Number.isFinite(value) || value < 0 || value > 100) return false;
+    const completing = plans.at(-1)?.id === plan.id && value === 100 && plan.progress_percent !== 100;
+    if (completing) {
+      if (!plan.due_date) { window.alert('Vui lòng chọn ngày hoàn thành của nhiệm vụ cuối cùng.'); return false; }
+      if (!await confirmCompletion(plan.due_date!)) return false;
+    }
+    updatePlan.mutate({ id: plan.id, payload: {
+      progress_percent: value,
+      status: value === 100 ? 'done' : value > 0 ? 'in_progress' : 'pending',
+      confirm_completion: completing,
+    } });
+    return true;
+  };
 
   const handleAdd = async (event: FormEvent) => {
     event.preventDefault();
@@ -45,6 +62,7 @@ export default function TaskPlansPanel({ workId, canEdit }: { workId: number; ca
       workId,
       payload: {
         step_name: stepName,
+        step_order: Math.max(0, ...plans.map(plan => plan.step_order)) + 1,
         ...(dueDate && { due_date: dueDate }),  // 👈 CHỈ GỬI KHI CÓ NGÀY
       },
     });
@@ -58,6 +76,7 @@ export default function TaskPlansPanel({ workId, canEdit }: { workId: number; ca
 
   return (
     <div className="mt-3">
+      {dialog}
       <div className="d-flex justify-content-between align-items-center mb-2">
         <h6 className="mb-0">Kế hoạch thực hiện (hạng mục)</h6>
         {averagePercent !== null && (
@@ -124,7 +143,8 @@ export default function TaskPlansPanel({ workId, canEdit }: { workId: number; ca
                 type="date"
                 className="form-control form-control-sm"
                 style={{ width: 150 }}
-                defaultValue={plan.due_date || ''}
+                key={plan.due_date}
+                defaultValue={plan.due_date?.split('T')[0] || ''}
                 disabled={!canEdit}
                 title="Ngày hoàn thành dự kiến"
                 onBlur={(e) => {
@@ -146,12 +166,14 @@ export default function TaskPlansPanel({ workId, canEdit }: { workId: number; ca
                 max={100}
                 className="form-control form-control-sm"
                 style={{ width: 80 }}
+                key={plan.progress_percent}
                 defaultValue={plan.progress_percent}
                 disabled={!canEdit}
-                onBlur={(e) => {
-                  const value = Number(e.target.value);
+                onBlur={async (e) => {
+                  const input = e.currentTarget;
+                  const value = Number(input.value);
                   if (value !== plan.progress_percent) {
-                    updatePlan.mutate({ id: plan.id, payload: { progress_percent: value } });
+                    if (!await saveProgress(plan, value)) input.value = String(plan.progress_percent);
                   }
                 }}
               />
@@ -160,10 +182,7 @@ export default function TaskPlansPanel({ workId, canEdit }: { workId: number; ca
                 className="form-select form-select-sm"
                 value={plan.status}
                 disabled={!canEdit}
-                onChange={(e) => updatePlan.mutate({
-                  id: plan.id,
-                  payload: { status: e.target.value as TaskPlan['status'] },
-                })}
+                onChange={(e) => saveProgress(plan, e.target.value === 'done' ? 100 : e.target.value === 'pending' ? 0 : Math.min(99, plan.progress_percent))}
               >
                 {Object.entries(STATUS_LABEL).map(([value, label]) => (
                   <option key={value} value={value}>{label}</option>

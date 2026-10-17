@@ -1,3 +1,6 @@
+import { useQueryClient } from '@tanstack/react-query';
+import AttachmentInput from '../../../components/AttachmentInput';
+import useCompletionConfirmation from '../../../components/useCompletionConfirmation';
 import { forwardRef, useImperativeHandle, useRef, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { listTaskPlans, createTaskPlan, updateTaskPlan, deleteTaskPlan, uploadAttachments, type DigitalWork, type MilestoneItem } from '../../../lib/db';
@@ -10,8 +13,9 @@ export interface ProgressFormValues {
   support_request: string;
   capex_amount: number | null;
   estimated_saving_per_year: number | null;
+  saving_is_estimated: boolean;
   payback_years: number | null;
-  workflow_status: 'requested' | 'approved' | 'in_progress' | 'completed';
+  workflow_status: DigitalWork['workflow_status'];
 }
 
 export interface ProgressUpdateModalHandle {
@@ -26,7 +30,9 @@ interface ProgressUpdateModalProps {
 
 const ProgressUpdateModal = forwardRef<ProgressUpdateModalHandle, ProgressUpdateModalProps>(
   ({ onSubmit }, ref) => {
+    const queryClient = useQueryClient();
     const { t } = useTranslation();
+    const { confirmCompletion, dialog } = useCompletionConfirmation();
     const modalRef = useRef<HTMLDivElement>(null);
     const [workId, setWorkId] = useState<number | null>(null);
     const [taskName, setTaskName] = useState('');
@@ -39,6 +45,7 @@ const ProgressUpdateModal = forwardRef<ProgressUpdateModalHandle, ProgressUpdate
       support_request: '',
       capex_amount: null,
       estimated_saving_per_year: null,
+      saving_is_estimated: true,
       payback_years: null,
       workflow_status: 'requested',
     });
@@ -46,6 +53,7 @@ const ProgressUpdateModal = forwardRef<ProgressUpdateModalHandle, ProgressUpdate
     const [milestones, setMilestones] = useState<MilestoneItem[]>([]);
     const [newMilestoneName, setNewMilestoneName] = useState('');
     const [newMilestoneDueDate, setNewMilestoneDueDate] = useState('');
+    const [attachmentLinks, setAttachmentLinks] = useState('');
     const [afterWorkImages, setAfterWorkImages] = useState<File[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -56,6 +64,7 @@ const ProgressUpdateModal = forwardRef<ProgressUpdateModalHandle, ProgressUpdate
         setWorkId(work.id);
         setTaskName(work.task_name || '');
         setAfterWorkImages([]);
+        setAttachmentLinks('');
 
         setForm({
           status: work.status ?? 0,
@@ -65,6 +74,7 @@ const ProgressUpdateModal = forwardRef<ProgressUpdateModalHandle, ProgressUpdate
           support_request: work.support_request ?? '',
           capex_amount: work.capex_amount !== null && work.capex_amount !== undefined ? Number(work.capex_amount) : null,
           estimated_saving_per_year: work.estimated_saving_per_year !== null && work.estimated_saving_per_year !== undefined ? Number(work.estimated_saving_per_year) : null,
+          saving_is_estimated: work.saving_is_estimated ?? (work.workflow_status !== 'completed'),
           payback_years: work.payback_years !== null && work.payback_years !== undefined ? Number(work.payback_years) : null,
           workflow_status: work.workflow_status ?? 'requested',
         });
@@ -73,7 +83,7 @@ const ProgressUpdateModal = forwardRef<ProgressUpdateModalHandle, ProgressUpdate
           const res: any = await listTaskPlans(work.id);
           const rawList = Array.isArray(res) ? res : (res?.documents || res?.data || []);
 
-          const loadedPlans = rawList.map((p: any) => ({
+          const loadedPlans = [...rawList].sort((a: any, b: any) => (a.step_order - b.step_order) || (a.id - b.id)).map((p: any) => ({
             id: p.id,
             name: p.step_name || p.name,
             progress: p.progress_percent ?? p.progress ?? 0,
@@ -124,7 +134,7 @@ const ProgressUpdateModal = forwardRef<ProgressUpdateModalHandle, ProgressUpdate
 
       setForm(prev => ({
         ...prev,
-        progress_percent: avgProgress,
+        progress_percent: allCompleted ? 100 : avgProgress,
         status: computedStatus,
         progress_comment: combinedNotes,
       }));
@@ -173,6 +183,7 @@ const ProgressUpdateModal = forwardRef<ProgressUpdateModalHandle, ProgressUpdate
     };
 
     const handleUpdateMilestone = async (id: string | number, field: keyof MilestoneItem, val: any) => {
+      if (field === 'progress' && (!Number.isFinite(Number(val)) || Number(val) < 0 || Number(val) > 100)) return;
       const updated = milestones.map((item) => {
         if (item.id === id) {
           const itemUpdated = { ...item, [field]: val };
@@ -182,13 +193,21 @@ const ProgressUpdateModal = forwardRef<ProgressUpdateModalHandle, ProgressUpdate
             else if (numVal > 0) itemUpdated.status = 'Đang thực hiện';
             else itemUpdated.status = 'Chưa bắt đầu';
           }
+          if (field === 'status') {
+            itemUpdated.progress = val === 'Hoàn thành' ? 100 : val === 'Chưa bắt đầu' ? 0 : Math.min(99, Number(item.progress));
+          }
           return itemUpdated;
         }
         return item;
       });
 
-      setMilestones(updated);
-      calculateAndUpdateFromMilestones(updated);
+      const target = updated.find(item => item.id === id);
+      const previous = milestones.find(item => item.id === id);
+      const completing = updated.at(-1)?.id === id && Number(target?.progress) === 100 && Number(previous?.progress) !== 100;
+      if (completing) {
+        if (!target?.dueDate) { window.alert('Vui lòng chọn ngày hoàn thành của nhiệm vụ cuối cùng.'); return; }
+        if (!await confirmCompletion(target!.dueDate!)) return;
+      }
 
       if (typeof id === 'number') {
         try {
@@ -199,6 +218,7 @@ const ProgressUpdateModal = forwardRef<ProgressUpdateModalHandle, ProgressUpdate
             else if (target.status === 'Đang thực hiện') apiStatus = 'in_progress';
 
             await updateTaskPlan(id, {
+              confirm_completion: completing,
               step_name: target.name,
               progress_percent: Number(target.progress),
               status: apiStatus,
@@ -207,13 +227,16 @@ const ProgressUpdateModal = forwardRef<ProgressUpdateModalHandle, ProgressUpdate
           }
         } catch (error) {
           console.error("Lỗi cập nhật hạng mục:", error);
+          return;
         }
       }
+      setMilestones(updated);
+      calculateAndUpdateFromMilestones(updated);
     };
 
     const handleSubmit = async (event: FormEvent) => {
       event.preventDefault();
-      if (workId === null) return;
+      if (workId === null || dialog) return;
       setIsSubmitting(true);
       try {
         const payload: Partial<ProgressFormValues> = {
@@ -224,15 +247,18 @@ const ProgressUpdateModal = forwardRef<ProgressUpdateModalHandle, ProgressUpdate
           support_request: form.support_request,
           capex_amount: form.capex_amount,
           estimated_saving_per_year: form.estimated_saving_per_year,
+          saving_is_estimated: form.saving_is_estimated,
           payback_years: form.payback_years,
         };
 
         await onSubmit(workId, payload);
 
-        if (afterWorkImages.length > 0) {
-          await uploadAttachments(workId, afterWorkImages, 'after_work');
+        if (afterWorkImages.length > 0 || attachmentLinks.trim()) {
+          await uploadAttachments(workId, afterWorkImages, 'after_work', attachmentLinks.split(/\r?\n/).map(link => link.trim()).filter(Boolean));
         }
 
+        await queryClient.invalidateQueries({ queryKey: ['work_attachments', workId] });
+        await queryClient.invalidateQueries({ queryKey: ['works'] });
         handleClose();
       } finally {
         setIsSubmitting(false);
@@ -241,7 +267,7 @@ const ProgressUpdateModal = forwardRef<ProgressUpdateModalHandle, ProgressUpdate
 
     // 👈 Chấp nhận công việc: chuyển trạng thái quy trình sang "Thực hiện"
     const handleAccept = async () => {
-      if (workId === null) return;
+      if (workId === null || dialog) return;
       setIsSubmitting(true);
       try {
         await onSubmit(workId, { workflow_status: 'in_progress' });
@@ -253,6 +279,7 @@ const ProgressUpdateModal = forwardRef<ProgressUpdateModalHandle, ProgressUpdate
 
     return (
       <div className="modal fade" ref={modalRef} tabIndex={-1} aria-hidden="true">
+        {dialog}
         <style>{`
           /* ===== LIGHT MODE (mặc định) ===== */
           .progress-modal-input {
@@ -421,10 +448,16 @@ const ProgressUpdateModal = forwardRef<ProgressUpdateModalHandle, ProgressUpdate
                               <input
                                 type="number"
                                 className="form-control text-center progress-modal-input"
-                                value={item.progress}
+                                key={String(item.id) + ":" + item.progress}
+                                defaultValue={item.progress}
                                 min={0}
                                 max={100}
-                                onChange={(e) => handleUpdateMilestone(item.id, 'progress', e.target.value)}
+                                onBlur={async (e) => {
+                                  const input = e.currentTarget;
+                                  await handleUpdateMilestone(item.id, 'progress', input.value);
+                                  input.value = String(item.progress);
+                                }}
+                                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); } }}
                               />
                               <span className="input-group-text">%</span>
                             </div>
@@ -482,14 +515,25 @@ const ProgressUpdateModal = forwardRef<ProgressUpdateModalHandle, ProgressUpdate
                         />
                       </div>
                       <div className="col-md-4">
-                        <label className="form-label">{t('progress.estimatedSaving')}</label>
+                        <label className="form-label" htmlFor="annual-saving">{t('progress.annualSaving')}</label>
                         <input
                           type="number"
                           step="0.01"
                           className="form-control progress-modal-input"
+                          id="annual-saving"
+                          aria-describedby="annual-saving-type"
                           value={form.estimated_saving_per_year ?? ''}
                           onChange={(e) => setForm({ ...form, estimated_saving_per_year: e.target.value ? Number(e.target.value) : null })}
                         />
+                        <div className="form-check mt-2">
+                          <input type="checkbox" id="saving-is-estimated" className="form-check-input"
+                            checked={form.saving_is_estimated}
+                            onChange={e => setForm(prev => ({ ...prev, saving_is_estimated: e.target.checked }))} />
+                          <label htmlFor="saving-is-estimated" className="form-check-label">{t('progress.projectedSaving')}</label>
+                        </div>
+                        <small id="annual-saving-type" className="text-muted" aria-live="polite">
+                          {form.saving_is_estimated ? t('progress.projectedSavingHint') : t('progress.actualSavingHint')}
+                        </small>
                       </div>
                       <div className="col-md-4">
                         <label className="form-label">{t('progress.paybackYears')}</label>
@@ -534,15 +578,11 @@ const ProgressUpdateModal = forwardRef<ProgressUpdateModalHandle, ProgressUpdate
 
                       <div className="col-md-6">
                         <label className="form-label">{t('progress.afterWorkImages')}</label>
-                        <input
-                          type="file"
-                          accept="image/png,image/jpeg,image/webp"
-                          multiple
-                          className="form-control progress-modal-input"
-                          onChange={(e) => {
-                            const fileList = e.target.files;
-                            setAfterWorkImages(fileList ? Array.from(fileList) : []);
-                          }}
+                        <AttachmentInput
+                          files={afterWorkImages}
+                          onFilesChange={setAfterWorkImages}
+                          links={attachmentLinks}
+                          onLinksChange={setAttachmentLinks}
                         />
                       </div>
                     </>

@@ -1,8 +1,10 @@
+import ImageGallery from '../../../components/ImageGallery';
+import UserNameInput from '../../../components/UserNameInput';
 import { useMemo, useRef, useState, Fragment, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { FiDownload, FiPlus, FiEdit2, FiTrash2, FiUserPlus, FiEye } from 'react-icons/fi';
+import { FiDownload, FiPlus, FiEdit2, FiTrash2, FiUserPlus, FiEye, FiMove, FiArrowUp, FiArrowDown } from 'react-icons/fi';
 import { useAuth } from '../../../context/AuthContext';
 import LoadingOverlay from '../../../components/LoadingOverlay';
 import ErrorState from '../../../components/ErrorState';
@@ -27,11 +29,11 @@ function progressBucket(percent: number): 'good' | 'warn' | 'bad' {
 // 👈 Helper format ngày dd/MM/yyyy
 function formatDueDate(dateStr?: string | null): string {
   if (!dateStr) return '';
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return '';
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const year = d.getFullYear();
+  // Match the calendar date used by the date input without timezone conversion.
+  const date = dateStr.split('T')[0];
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+  if (!match) return '';
+  const [, year, month, day] = match;
   return `${day}/${month}/${year}`;
 }
 
@@ -59,6 +61,15 @@ export default function WorksPage() {
   const [searchParams] = useSearchParams();
   const projectId = searchParams.get('project_id');
   const isManagerOrAdmin = can('manager-or-admin');
+  const orderStorageKey = `digital-work:project-order:${user?.id ?? 'guest'}`;
+  const [projectOrder, setProjectOrder] = useState<number[]>(() => {
+    try {
+      const saved: unknown = JSON.parse(localStorage.getItem(orderStorageKey) ?? '[]');
+      return Array.isArray(saved) ? saved.filter((id): id is number => Number.isInteger(id)) : [];
+    } catch { return []; }
+  });
+  const [draggedId, setDraggedId] = useState<number | null>(null);
+  const [dropTargetId, setDropTargetId] = useState<number | null>(null);
 
   const { data, isLoading, isError } = useWorks({ limit: 200, project_id: projectId ? Number(projectId) : undefined });
   const projectsQuery = useQuery({ queryKey: ['projects', 'select'], queryFn: () => db.listProjects(1) });
@@ -75,6 +86,7 @@ export default function WorksPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [picFilter, setPicFilter] = useState('');
   const [workflowFilter, setWorkflowFilter] = useState('');
+  const [completionYear, setCompletionYear] = useState('');
   const [selectedDeadlines, setSelectedDeadlines] = useState<string[]>([]);
   const [deadlineMenuOpen, setDeadlineMenuOpen] = useState(false);
   const deadlineMenuRef = useRef<HTMLDivElement>(null);
@@ -86,12 +98,34 @@ export default function WorksPage() {
 
   // 👈 State lưu attachments (ảnh sau làm) theo workId
   const [attachmentsByWork, setAttachmentsByWork] = useState<Record<number, WorkAttachment[]>>({});
-  const [zoomImage, setZoomImage] = useState<string | null>(null);
+  const [gallery, setGallery] = useState<{ images: WorkAttachment[]; initialIndex: number } | null>(null);
 
   const formModalRef = useRef<WorkFormModalHandle>(null);
   const progressModalRef = useRef<ProgressUpdateModalHandle>(null);
 
-  const works = useMemo(() => data?.documents ?? [], [data]);
+  const works = useMemo(() => {
+    const positions = new Map(projectOrder.map((id, index) => [id, index]));
+    return [...(data?.documents ?? [])].sort((a, b) =>
+      (positions.get(a.id) ?? Infinity) - (positions.get(b.id) ?? Infinity));
+  }, [data, projectOrder]);
+
+  const moveProject = (sourceId: number, targetId: number) => {
+    if (sourceId === targetId) return;
+    // Keep hidden rows in their slots when reordering a filtered list.
+    const visibleIds = filtered.map(work => work.id);
+    const from = visibleIds.indexOf(sourceId);
+    const to = visibleIds.indexOf(targetId);
+    if (from < 0 || to < 0) return;
+    visibleIds.splice(from, 1);
+    visibleIds.splice(to, 0, sourceId);
+    const visibleSet = new Set(visibleIds);
+    let nextVisible = 0;
+    const loadedIds = works.map(work => visibleSet.has(work.id) ? visibleIds[nextVisible++] : work.id);
+    const loadedSet = new Set(loadedIds);
+    const nextOrder = [...loadedIds, ...projectOrder.filter(id => !loadedSet.has(id))];
+    setProjectOrder(nextOrder);
+    try { localStorage.setItem(orderStorageKey, JSON.stringify(nextOrder)); } catch { /* Still allow reordering when storage is unavailable. */ }
+  };
 
   // 👈 Tự động fetch plans cho tất cả works khi load danh sách
   useEffect(() => {
@@ -171,25 +205,18 @@ export default function WorksPage() {
   }, [deadlineMenuOpen]);
 
   // 👈 Danh sách tên user đã đăng ký để gợi ý PIC/Support (vẫn cho gõ tự do tên ngoài danh sách)
-  const picOptions = useMemo(() => {
-    const names = new Set<string>();
-    (usersQuery.data?.documents ?? []).forEach((u) => {
-      const name = (u.name ?? u.email ?? '').trim();
-      if (name) names.add(name);
-    });
-    return Array.from(names).sort((a, b) => a.localeCompare(b));
-  }, [usersQuery.data]);
-
   // 👈 Danh sách ngày "Hoàn thành dự kiến" (expected_deadline) duy nhất để lọc
   const deadlineOptions = useMemo(() => {
     const map = new Map<string, string>();
     works.forEach((w) => {
       if (w.expected_deadline) {
-        map.set(w.expected_deadline, formatDueDate(w.expected_deadline));
+        const date = w.expected_deadline.split('T')[0];
+        const label = formatDueDate(date);
+        if (label) map.set(date, label);
       }
     });
     return Array.from(map.entries())
-      .sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime())
+      .sort((a, b) => a[0].localeCompare(b[0]))
       .map(([value, label]) => ({ value, label }));
   }, [works]);
 
@@ -199,11 +226,20 @@ export default function WorksPage() {
     );
   };
 
+  const completionYears = useMemo(() => {
+    const years = works
+      .filter(work => work.workflow_status === 'completed' && work.completed_at)
+      .map(work => work.completed_at!.slice(0, 4))
+      .filter(year => /^\d{4}$/.test(year));
+    return [...new Set(years)].sort((a, b) => b.localeCompare(a));
+  }, [works]);
+
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
     const picTerm = picFilter.trim().toLowerCase();
     return works.filter((w) => {
       if (workflowFilter && w.workflow_status !== workflowFilter) return false;
+      if (completionYear && (w.workflow_status !== 'completed' || w.completed_at?.slice(0, 4) !== completionYear)) return false;
       if (priorityFilter && w.priority !== priorityFilter) return false;
       if (statusFilter && progressBucket(w.progress_percent) !== statusFilter) return false;
       if (picTerm) {
@@ -212,7 +248,7 @@ export default function WorksPage() {
         if (!pic.includes(picTerm) && !support.includes(picTerm)) return false;
       }
       if (selectedDeadlines.length > 0) {
-        if (!w.expected_deadline || !selectedDeadlines.includes(w.expected_deadline)) return false;
+        if (!w.expected_deadline || !selectedDeadlines.includes(w.expected_deadline.split('T')[0])) return false;
       }
       if (term) {
         const haystack = `${w.task_name} ${w.factory_name ?? ''} ${w.lead_project ?? ''}`.toLowerCase();
@@ -220,7 +256,7 @@ export default function WorksPage() {
       }
       return true;
     });
-  }, [works, search, priorityFilter, statusFilter, picFilter, selectedDeadlines, workflowFilter]);
+  }, [works, search, priorityFilter, statusFilter, picFilter, selectedDeadlines, workflowFilter, completionYear]);
 
   const legendCounts = useMemo(() => {
     const base = { good: 0, warn: 0, bad: 0 };
@@ -255,13 +291,13 @@ export default function WorksPage() {
 
     if (editingId) {
       await updateWork.mutateAsync({ id: editingId, payload });
-      if (values.files && values.files.length > 0) {
-        await db.uploadAttachments(editingId, values.files);
+      if (values.files.length > 0 || values.attachment_links.trim()) {
+        await db.uploadAttachments(editingId, values.files, undefined, values.attachment_links.split(/\r?\n/).map(link => link.trim()).filter(Boolean));
       }
     } else {
       const created = await createWork.mutateAsync(payload as Partial<DigitalWork> & { task_name: string });
-      if (values.files && values.files.length > 0) {
-        await db.uploadAttachments(created.id, values.files);
+      if (values.files.length > 0 || values.attachment_links.trim()) {
+        await db.uploadAttachments(created.id, values.files, undefined, values.attachment_links.split(/\r?\n/).map(link => link.trim()).filter(Boolean));
       }
     }
 
@@ -333,23 +369,24 @@ export default function WorksPage() {
               <option value="">{t('works.filters.allWorkflow')}</option>
               <option value="requested">{t('common.workflow.requested')}</option>
               <option value="approved">{t('common.workflow.approved')}</option>
+              <option value="rejected">{t('common.workflow.rejected')}</option>
               <option value="in_progress">{t('common.workflow.in_progress')}</option>
               <option value="completed">{t('common.workflow.completed')}</option>
             </select>
-            <input
-              type="text"
-              className="form-control"
-              list="pic-support-options"
-              style={{ maxWidth: 200 }}
-              placeholder={t('works.filters.picSupportPlaceholder')}
-              value={picFilter}
-              onChange={(e) => setPicFilter(e.target.value)}
-            />
-            <datalist id="pic-support-options">
-              {picOptions.map((name) => (
-                <option key={name} value={name} />
-              ))}
-            </datalist>
+            <select className="form-select" style={{ maxWidth: 180 }}
+              aria-label={t('works.filters.completionYear')}
+              value={completionYear} onChange={e => setCompletionYear(e.target.value)}>
+              <option value="">{t('works.filters.allYears')}</option>
+              {completionYears.map(year => <option key={year} value={year}>{year}</option>)}
+            </select>
+            <div style={{ width: 240, maxWidth: '100%' }}>
+              <UserNameInput
+                users={usersQuery.data?.documents ?? []}
+                placeholder={t('works.filters.picSupportPlaceholder')}
+                value={picFilter}
+                onChange={setPicFilter}
+              />
+            </div>
 
             <div ref={deadlineMenuRef} style={{ position: 'relative' }}>
               <button
@@ -375,7 +412,8 @@ export default function WorksPage() {
                     minWidth: '220px',
                     maxHeight: '260px',
                     overflowY: 'auto',
-                    background: 'var(--card-bg, #1a1d2e)',
+                    background: 'var(--color-surface)',
+                    color: 'var(--color-text)',
                     border: '1px solid rgba(148, 163, 184, 0.25)',
                     borderRadius: '6px',
                     padding: '8px',
@@ -420,17 +458,19 @@ export default function WorksPage() {
           </div>
 
           {filtered.length === 0 && <EmptyState message={t('works.noMatch')} />}
+          {filtered.length > 1 && <p className="text-muted small mb-2">{t('works.reorderHint')}</p>}
 
           {filtered.length > 0 && (
             <div className="table-responsive-wrap" style={{ flex: 1, overflowY: 'auto', overflowX: 'auto', minHeight: 0 }}>
               <table className="table align-middle mb-0">
-                <thead style={{ position: 'sticky', top: 0, background: 'var(--card-bg, #1a1d2e)', color: 'var(--text-color, #ffffff)', zIndex: 10 }}>
+                <thead style={{ position: 'sticky', top: 0, background: 'var(--color-surface)', color: 'var(--color-text)', zIndex: 10 }}>
                   <tr>
                     <th style={{ width: '45px', minWidth: '45px' }}>{t('works.columns.no')}</th>
                     <th style={{ width: '150px', minWidth: '150px' }}>{t('works.columns.project')}</th>
                     <th style={{ width: '160px', minWidth: '160px', textAlign: 'center' }}>{t('works.columns.image')}</th>
                     <th style={{ width: '120px', minWidth: '120px' }}>{t('works.columns.factory')}</th>
                     <th style={{ minWidth: '450px', width: 'auto' }}>{t('works.columns.progressUpdate')}</th>
+                    <th style={{ minWidth: '150px' }}>PIC</th>
                     <th style={{ width: '100px', minWidth: '100px' }}>{t('works.columns.statusPercent')}</th>
                     <th style={{ width: '60px', minWidth: '60px' }} />
                   </tr>
@@ -453,8 +493,41 @@ export default function WorksPage() {
 
                     return (
                       <Fragment key={work.id}>
-                        <tr>
-                          <td>{index + 1}</td>
+                        <tr
+                          onDragOver={event => {
+                            if (draggedId === null) return;
+                            event.preventDefault();
+                            event.dataTransfer.dropEffect = 'move';
+                            setDropTargetId(work.id);
+                          }}
+                          onDrop={event => {
+                            event.preventDefault();
+                            if (draggedId !== null) moveProject(draggedId, work.id);
+                            setDraggedId(null);
+                            setDropTargetId(null);
+                          }}
+                          style={{ opacity: draggedId === work.id ? 0.5 : 1, outline: dropTargetId === work.id && draggedId !== work.id ? '2px solid var(--color-primary)' : undefined }}
+                        >
+                          <td>
+                            <span>{index + 1}</span>
+                            <button type="button" className="btn btn-sm btn-link p-1" draggable
+                              title={t('works.dragProject')} aria-label={t('works.dragProject')}
+                              style={{ cursor: 'grab' }}
+                              onDragStart={event => {
+                                event.dataTransfer.setData('text/plain', String(work.id));
+                                event.dataTransfer.effectAllowed = 'move';
+                                setDraggedId(work.id);
+                              }}
+                              onDragEnd={() => { setDraggedId(null); setDropTargetId(null); }}><FiMove /></button>
+                            <div className="d-flex">
+                              <button type="button" className="btn btn-sm btn-link p-0" disabled={index === 0}
+                                title={t('works.moveUp')} aria-label={t('works.moveUp')}
+                                onClick={() => moveProject(work.id, filtered[index - 1].id)}><FiArrowUp /></button>
+                              <button type="button" className="btn btn-sm btn-link p-0" disabled={index === filtered.length - 1}
+                                title={t('works.moveDown')} aria-label={t('works.moveDown')}
+                                onClick={() => moveProject(work.id, filtered[index + 1].id)}><FiArrowDown /></button>
+                            </div>
+                          </td>
                           <td
                             className="fw-semibold"
                             style={{ width: '150px', minWidth: '150px', whiteSpace: 'normal', wordBreak: 'break-word' }}
@@ -482,7 +555,10 @@ export default function WorksPage() {
                                     cursor: 'pointer',
                                     border: '1px solid rgba(148, 163, 184, 0.3)',
                                   }}
-                                  onClick={() => setZoomImage(latest.url)}
+                                  onClick={() => {
+                                    const allImages = (attachmentsByWork[work.id] || []).filter(a => a.mime_type?.startsWith('image/'));
+                                    setGallery({ images: allImages, initialIndex: allImages.findIndex(a => a.id === latest.id) });
+                                  }}
                                 />
                               );
                             })()}
@@ -539,7 +615,7 @@ export default function WorksPage() {
                                             background: overdue
                                               ? 'rgba(239, 68, 68, 0.15)'
                                               : 'rgba(148, 163, 184, 0.15)',
-                                            color: overdue ? '#ef4444' : 'var(--text-muted, #94a3b8)',
+                                            color: overdue ? 'var(--color-danger)' : 'var(--color-muted)',
                                             border: `1px solid ${overdue ? 'rgba(239, 68, 68, 0.35)' : 'rgba(148, 163, 184, 0.25)'}`,
                                             fontWeight: overdue ? 600 : 400,
                                           }}
@@ -566,6 +642,9 @@ export default function WorksPage() {
 
                               return <span className="text-muted">-</span>;
                             })()}
+                          </td>
+                          <td style={{ minWidth: '150px', whiteSpace: 'normal', overflowWrap: 'anywhere' }}>
+                            {work.lead_project?.trim() || work.assigned_to_name || '—'}
                           </td>
                           <td>
                             <span className="status-progress-bar">
@@ -625,7 +704,7 @@ export default function WorksPage() {
                         </tr>
                         {expandedId === work.id && (
                           <tr>
-                            <td colSpan={7} className="bg-light-subtle">
+                            <td colSpan={8} className="bg-light-subtle">
                               <TaskPlansPanel workId={work.id} canEdit={canUpdateProgress} />
                             </td>
                           </tr>
@@ -645,40 +724,18 @@ export default function WorksPage() {
         projects={projectsQuery.data?.documents ?? []}
         users={usersQuery.data?.documents ?? []}
         onSubmit={handleFormSubmit}
+        onReject={async (workId, reason) => {
+          const result = await db.rejectWork(workId, reason);
+          await queryClient.invalidateQueries({ queryKey: ['works'] });
+          return result.notification_sent;
+        }}
       />
       <ProgressUpdateModal ref={progressModalRef} isReviewer={isManagerOrAdmin} onSubmit={handleProgressSubmit} />
 
       <WorkDetailModal work={selectedWork} onClose={() => setSelectedWork(null)} />
 
-      {zoomImage && (
-        <div
-          onClick={() => setZoomImage(null)}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.8)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 2000,
-            cursor: 'zoom-out',
-          }}
-        >
-          <img
-            src={zoomImage}
-            alt={t('works.afterWorkImageAlt')}
-            style={{ maxWidth: '90vw', maxHeight: '90vh', borderRadius: '8px', boxShadow: '0 0 30px rgba(0,0,0,0.5)' }}
-            onClick={(e) => e.stopPropagation()}
-          />
-          <button
-            type="button"
-            className="btn btn-light"
-            onClick={() => setZoomImage(null)}
-            style={{ position: 'absolute', top: '20px', right: '20px' }}
-          >
-            ✕
-          </button>
-        </div>
+      {gallery && (
+        <ImageGallery images={gallery.images} initialIndex={gallery.initialIndex} onClose={() => setGallery(null)} />
       )}
     </div>
   );

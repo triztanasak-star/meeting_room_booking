@@ -1,4 +1,5 @@
 {
+  "avatar": {"processing": "Processing photo...", "notSaved": "The account was created but the API did not return the selected photo. Check the backend version; do not register again.", "createFailed": "Could not confirm account creation with the photo. Check the user list before retrying.","label": "Profile photo (optional)", "hint": "Choose a JPG, PNG or WebP image up to 5 MB.", "remove": "Remove photo", "error": "Unable to read image. Choose a JPG, PNG or WebP image up to 5 MB."},
   "common": {
     "noData": "No data yet.",
     "error": "Something went wrong, please try again.",
@@ -25,6 +26,7 @@
       "low": "Low (L)"
     },
     "workflow": {
+      "rejected": "Rejected",
       "requested": "Requested",
       "approved": "Approved",
       "in_progress": "In progress",
@@ -98,6 +100,13 @@
     }
   },
   "dashboard": {
+    "allSavingsHint": "CAPEX, savings and payback include projects with actual and estimated savings.",
+    "actualSavingsHint": "CAPEX, savings and payback only include projects with actual savings.",
+    "lateCompletion": "Overdue completion",
+    "unassigned": "Unassigned",
+    "noHighPriorityProjects": "No High priority projects.",
+    "progressByPic": "Work distribution by PIC",
+    "picChartHint": "Work items by status for each PIC. Shared work is counted for each assigned person.",
     "title": "Digital Team activity overview",
     "subtitle": "{{count}} projects being tracked",
     "totalWorks": "Total projects",
@@ -122,6 +131,10 @@
     }
   },
   "finance": {
+    "includeEstimated": "Projected savings",
+    "allSavingsHint": "All four metrics include actual and projected savings projects.",
+    "actualSavingsHint": "All four metrics include only actual savings projects.",
+    "loadError": "Unable to load financial data. Please try again.",
     "loading": "Loading financial data...",
     "totalCapex": "TOTAL CAPEX",
     "totalSavingPerYear": "TOTAL SAVING / YEAR",
@@ -132,6 +145,7 @@
     "listTitle": "Capex & Saving list",
     "itemCount": "{{count}} items",
     "columns": {
+      "statusPercent": "Status (%)",
       "item": "ITEM / PROJECT",
       "capex": "CAPEX (VND)",
       "saving": "SAVING (VND) / YEAR",
@@ -192,6 +206,8 @@
     "sendRequest": "Send request",
     "searchPlaceholder": "Search by project name, factory",
     "filters": {
+      "allYears": "All years",
+      "completionYear": "Actual completion year",
       "allPriority": "All priorities",
       "allStatus": "All statuses",
       "allWorkflow": "All stages",
@@ -211,6 +227,10 @@
       "rows": "{{filtered}} / {{total}} rows"
     },
     "noMatch": "No matching projects.",
+    "reorderHint": "Drag the handle in the NO. column or use the up/down arrows. Your order is saved in this browser.",
+    "dragProject": "Drag to reorder project",
+    "moveUp": "Move project up",
+    "moveDown": "Move project down",
     "columns": {
       "no": "NO.",
       "project": "PROJECT",
@@ -231,6 +251,7 @@
     "afterWorkImageAlt": "After-work image"
   },
   "workForm": {
+    "submitError": "Could not save the work item. Please check your connection and try again.",
     "titleAssign": "Assign work",
     "titleEdit": "Edit project",
     "titleCreate": "Add project",
@@ -243,7 +264,7 @@
     "email": "Email",
     "phone": "Phone",
     "expectedDeadline": "Desired deadline",
-    "attachment": "PDF / image attachment",
+    "attachment": "Files and links",
     "pic": "PIC",
     "picPlaceholder": "Select or type PIC name...",
     "support": "Support",
@@ -269,13 +290,17 @@
     "support": "Support",
     "expectedDeadline": "Expected completion",
     "attachments": "Attachments",
-    "afterWorkImages": "After-work images",
-    "noImages": "— No images",
+    "afterWorkImages": "After-work files and links",
+    "noImages": "— No files or links",
     "noAttachments": "— No attachments",
     "noProgressUpdate": "— No progress update yet",
     "close": "Close"
   },
   "progress": {
+    "annualSaving": "Savings /year (VND)",
+    "projectedSaving": "Projected",
+    "projectedSavingHint": "Projected savings — project not yet completed.",
+    "actualSavingHint": "Actual savings — completed project.",
     "title": "Update progress — {{name}}",
     "planSection": "Execution plan (milestones)",
     "avgProgress": "Average progress: {{percent}}%",
@@ -292,7 +317,7 @@
     "paybackYears": "Payback time (years)",
     "otherBenefit": "Other benefits",
     "supportRequest": "Support needed",
-    "afterWorkImages": "After-work images",
+    "afterWorkImages": "After-work files and links",
     "cancel": "Cancel",
     "accept": "Accept",
     "save": "Save",

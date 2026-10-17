@@ -1,4 +1,5 @@
 {
+  "avatar": {"processing": "\u0110ang x\u1eed l\u00fd \u1ea3nh...", "notSaved": "T\u00e0i kho\u1ea3n \u0111\u00e3 t\u1ea1o nh\u01b0ng API kh\u00f4ng tr\u1ea3 v\u1ec1 \u1ea3nh \u0111\u00e3 ch\u1ecdn. Vui l\u00f2ng ki\u1ec3m tra phi\u00ean b\u1ea3n backend; kh\u00f4ng \u0111\u0103ng k\u00fd l\u1ea1i.", "createFailed": "Kh\u00f4ng x\u00e1c nh\u1eadn \u0111\u01b0\u1ee3c vi\u1ec7c t\u1ea1o t\u00e0i kho\u1ea3n k\u00e8m \u1ea3nh. Ki\u1ec3m tra danh s\u00e1ch ng\u01b0\u1eddi d\u00f9ng tr\u01b0\u1edbc khi th\u1eed l\u1ea1i.","label": "Ảnh đại diện (không bắt buộc)", "hint": "Chọn ảnh JPG, PNG hoặc WebP, tối đa 5 MB.", "remove": "Xóa ảnh", "error": "Không đọc được ảnh. Hãy chọn ảnh JPG, PNG hoặc WebP tối đa 5 MB."},
   "common": {
     "noData": "Chưa có dữ liệu.",
     "error": "Có lỗi xảy ra, vui lòng thử lại.",
@@ -25,6 +26,7 @@
       "low": "Low (L)"
     },
     "workflow": {
+      "rejected": "Không duyệt",
       "requested": "Yêu cầu",
       "approved": "Đã duyệt",
       "in_progress": "Thực hiện",
@@ -98,6 +100,13 @@
     }
   },
   "dashboard": {
+    "allSavingsHint": "CAPEX, tiết kiệm và thời gian hoàn vốn tính cả dự án có tiết kiệm thực tế và dự kiến.",
+    "actualSavingsHint": "CAPEX, tiết kiệm và thời gian hoàn vốn chỉ tính các dự án có tiết kiệm thực tế.",
+    "lateCompletion": "Trễ hạn hoàn thành",
+    "unassigned": "Chưa phân công",
+    "noHighPriorityProjects": "Chưa có dự án ưu tiên High.",
+    "progressByPic": "Phân bố công việc theo PIC",
+    "picChartHint": "Số công việc theo trạng thái của từng PIC. Công việc có nhiều PIC được tính cho từng người.",
     "title": "Tổng quan hoạt động Digital Team",
     "subtitle": "{{count}} dự án đang theo dõi",
     "totalWorks": "Tổng số dự án",
@@ -122,6 +131,10 @@
     }
   },
   "finance": {
+    "includeEstimated": "Tiết kiệm dự kiến",
+    "allSavingsHint": "Bốn chỉ số gồm tất cả dự án có tiết kiệm thực tế và dự kiến.",
+    "actualSavingsHint": "Bốn chỉ số chỉ tính các dự án có tiết kiệm thực tế.",
+    "loadError": "Không thể tải dữ liệu tài chính. Vui lòng thử lại.",
     "loading": "Đang tải dữ liệu tài chính...",
     "totalCapex": "TỔNG VỐN ĐẦU TƯ (CAPEX)",
     "totalSavingPerYear": "TỔNG TIẾT KIỆM / NĂM",
@@ -132,6 +145,7 @@
     "listTitle": "Danh sách Capex & Saving",
     "itemCount": "{{count}} khoản mục",
     "columns": {
+      "statusPercent": "Trạng thái (%)",
       "item": "HẠNG MỤC / DỰ ÁN",
       "capex": "CAPEX (VND)",
       "saving": "SAVING (VND) / NĂM",
@@ -192,6 +206,8 @@
     "sendRequest": "Gửi yêu cầu",
     "searchPlaceholder": "Tìm theo tên dự án, nhà máy",
     "filters": {
+      "allYears": "Tất cả năm",
+      "completionYear": "Năm hoàn thành thực tế",
       "allPriority": "Tất cả mức ưu tiên",
       "allStatus": "Tất cả trạng thái",
       "allWorkflow": "Tất cả tình trạng",
@@ -211,6 +227,10 @@
       "rows": "{{filtered}} / {{total}} dòng"
     },
     "noMatch": "Không có dự án phù hợp.",
+    "reorderHint": "Kéo biểu tượng ở cột NO. để đổi thứ tự, hoặc dùng mũi tên lên/xuống. Thứ tự được lưu riêng trên trình duyệt này.",
+    "dragProject": "Kéo để đổi thứ tự dự án",
+    "moveUp": "Di chuyển dự án lên",
+    "moveDown": "Di chuyển dự án xuống",
     "columns": {
       "no": "NO.",
       "project": "DỰ ÁN",
@@ -228,9 +248,10 @@
       "updateProgress": "Cập nhật tiến độ",
       "delete": "Xoá"
     },
-    "afterWorkImageAlt": "Hình ảnh sau làm"
+    "afterWorkImageAlt": "Tệp và link sau làm"
   },
   "workForm": {
+    "submitError": "Không thể lưu công việc. Vui lòng kiểm tra kết nối và thử lại.",
     "titleAssign": "Giao công việc",
     "titleEdit": "Sửa dự án",
     "titleCreate": "Thêm dự án",
@@ -243,7 +264,7 @@
     "email": "Email",
     "phone": "Sđt",
     "expectedDeadline": "Deadline mong muốn",
-    "attachment": "File PDF / hình ảnh đính kèm",
+    "attachment": "Tệp và link đính kèm",
     "pic": "PIC",
     "picPlaceholder": "Chọn hoặc nhập tên PIC...",
     "support": "Support",
@@ -269,13 +290,17 @@
     "support": "Hỗ trợ",
     "expectedDeadline": "Hoàn thành dự kiến",
     "attachments": "Tài liệu đính kèm",
-    "afterWorkImages": "Hình ảnh sau làm",
-    "noImages": "— Không có hình ảnh",
+    "afterWorkImages": "Tệp và link sau làm",
+    "noImages": "— Không có tệp hoặc link",
     "noAttachments": "— Không có tài liệu",
     "noProgressUpdate": "— Chưa có cập nhật tiến độ",
     "close": "Đóng"
   },
   "progress": {
+    "annualSaving": "Tiết kiệm /năm (VNĐ)",
+    "projectedSaving": "Dự kiến",
+    "projectedSavingHint": "Tiết kiệm dự kiến — dự án chưa hoàn thành.",
+    "actualSavingHint": "Tiết kiệm thực tế — dự án đã hoàn thành.",
     "title": "Cập nhật tiến độ — {{name}}",
     "planSection": "Kế hoạch thực hiện (hạng mục)",
     "avgProgress": "Tổng tiến độ trung bình: {{percent}}%",
@@ -292,7 +317,7 @@
     "paybackYears": "Thời gian hoàn vốn (năm)",
     "otherBenefit": "Lợi ích khác",
     "supportRequest": "Thông tin cần hỗ trợ",
-    "afterWorkImages": "Hình ảnh sau làm",
+    "afterWorkImages": "Tệp và link sau làm",
     "cancel": "Hủy",
     "accept": "Chấp nhận",
     "save": "Lưu",

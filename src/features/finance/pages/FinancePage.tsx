@@ -1,59 +1,30 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useWorks } from '../../works/hooks/useWorks';
+import { useQuery } from '@tanstack/react-query';
+import { listWorks, type DigitalWork } from '../../../lib/db';
+import { calculateFinanceStats } from '../../../lib/financeStats';
 
 export default function FinancePage() {
   const { t, i18n } = useTranslation();
   const locale = i18n.language === 'en' ? 'en-US' : 'vi-VN';
-  const workResult = useWorks();
-
-  // Tự động quét mảng dữ liệu
-  const works = useMemo(() => {
-    if (!workResult) return [];
-    if (Array.isArray(workResult)) return workResult;
-
-    try {
-      const keys = Object.keys(workResult);
-      for (const key of keys) {
-        const val = (workResult as any)[key];
-        if (Array.isArray(val)) return val;
-        
-        if (val && typeof val === 'object') {
-          const subKeys = Object.keys(val);
-          for (const subKey of subKeys) {
-            if (Array.isArray(val[subKey])) return val[subKey];
-          }
-        }
+  const [includeEstimated, setIncludeEstimated] = useState(false);
+  const { data, isLoading: loading, isError } = useQuery({
+    queryKey: ['works', 'finance'],
+    queryFn: async () => {
+      const first = await listWorks({ page: 1, limit: 200 });
+      const allWorks: DigitalWork[] = [...first.documents];
+      const pages = Math.ceil(first.total / first.limit);
+      for (let page = 2; page <= pages; page++) {
+        const next = await listWorks({ page, limit: first.limit });
+        allWorks.push(...next.documents);
       }
-    } catch (e) {
-      console.error("Lỗi khi quét dữ liệu từ Proxy:", e);
-    }
-
-    return [];
-  }, [workResult]);
-
-  const loading = (workResult as any)?.loading || (workResult as any)?.isLoading || false;
+      return allWorks;
+    },
+  });
+  const works = data ?? [];
 
   // Tính toán các chỉ số tổng quan
-  const stats = useMemo(() => {
-    let totalCapex = 0;
-    let totalSaving = 0;
-
-    works.forEach((w: any) => {
-      totalCapex += Number(w.capex_amount || w.capex || 0);
-      totalSaving += Number(w.estimated_saving_per_year || w.saving || w.estimated_saving || 0);
-    });
-
-    const paybackPeriod = totalSaving > 0 ? (totalCapex / totalSaving).toFixed(1) : '0';
-    const cumulativeSaving5Years = totalSaving * 5;
-
-    return {
-      totalCapex,
-      totalSaving,
-      paybackPeriod,
-      cumulativeSaving5Years,
-    };
-  }, [works]);
+  const stats = useMemo(() => calculateFinanceStats(works, includeEstimated), [works, includeEstimated]);
 
   const formatCurrency = (amount: number) => {
     if (!amount || isNaN(amount)) return '—';
@@ -71,6 +42,8 @@ export default function FinancePage() {
   if (loading) {
     return <div className="p-4">{t('finance.loading')}</div>;
   }
+
+  if (isError) return <div className="alert alert-danger">{t('finance.loadError')}</div>;
 
   return (
     <div
@@ -162,6 +135,20 @@ export default function FinancePage() {
         }
       `}</style>
 
+      <div style={{ flexShrink: 0 }}>
+        <div className="form-check">
+          <input id="finance-include-estimated" type="checkbox" className="form-check-input"
+            checked={includeEstimated} onChange={e => setIncludeEstimated(e.target.checked)}
+            aria-describedby="finance-saving-scope" />
+          <label htmlFor="finance-include-estimated" className="form-check-label fw-semibold">
+            {t('finance.includeEstimated')}
+          </label>
+        </div>
+        <small id="finance-saving-scope" className="text-muted" aria-live="polite">
+          {includeEstimated ? t('finance.allSavingsHint') : t('finance.actualSavingsHint')}
+        </small>
+      </div>
+
       {/* 4 Thẻ thống kê tổng quan */}
       <div className="row g-3" style={{ flexShrink: 0 }}>
         <div className="col-md-3">
@@ -240,11 +227,12 @@ export default function FinancePage() {
               }}
             >
               <tr>
-                <th className="ps-3" style={{ width: '28%' }}>{t('finance.columns.item')}</th>
+                <th className="ps-3" style={{ width: '24%' }}>{t('finance.columns.item')}</th>
+                <th className="text-center" style={{ width: '8%', minWidth: 110 }}>{t('finance.columns.statusPercent')}</th>
                 <th style={{ width: '13%' }}>{t('finance.columns.capex')}</th>
                 <th style={{ width: '14%' }}>{t('finance.columns.saving')}</th>
                 <th className="text-center" style={{ width: '10%' }}>{t('finance.columns.payback')}</th>
-                <th className="pe-3" style={{ width: '35%' }}>{t('finance.columns.otherBenefit')}</th>
+                <th className="pe-3" style={{ width: '31%' }}>{t('finance.columns.otherBenefit')}</th>
               </tr>
             </thead>
             <tbody>
@@ -264,6 +252,9 @@ export default function FinancePage() {
                     <td className="ps-3 cell-name">
                       {work.task_name || work.name || t('finance.noName')}{' '}
                       {work.factory_name ? `(${work.factory_name})` : ''}
+                    </td>
+                    <td className="text-center">
+                      <span className="fw-semibold">{work.progress_percent ?? 0}%</span>
                     </td>
                     <td className="cell-capex">
                       {capexVal ? (
@@ -290,7 +281,7 @@ export default function FinancePage() {
               })}
               {works.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="text-center py-4 text-muted">
+                  <td colSpan={6} className="text-center py-4 text-muted">
                     {t('finance.noData')}
                   </td>
                 </tr>

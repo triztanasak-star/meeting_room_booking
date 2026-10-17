@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import logoImg from '../assets/logoDigital.JPG.jpg';
 import LanguageSwitcher from './LanguageSwitcher';
+import UserAvatar from './UserAvatar';
 
 export default function Sidebar() {
   const { user, can, logout } = useAuth();
@@ -82,7 +83,8 @@ export default function Sidebar() {
           className="sidebar-footer"
           style={{ flexShrink: 0, marginTop: 'auto' }}
         >
-          <div className="sidebar-user">
+          <div className="sidebar-user d-flex align-items-center gap-2">
+            <UserAvatar name={user?.name ?? ''} src={user?.avatar_url} />
             {user?.name}
             <span className="badge text-bg-primary ms-2">{t(`sidebar.roles.${user?.role ?? 'user'}`)}</span>
           </div>

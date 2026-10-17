@@ -6,6 +6,7 @@ export interface User {
   $id: string;
   id: number;
   name: string;
+  avatar_url?: string | null;
   email: string;
   role: Role;
   status: 'active' | 'disabled';
@@ -39,7 +40,8 @@ export interface DigitalWork {
   description: string | null;
   factory_name: string | null;
   status: number;
-  workflow_status: 'requested' | 'approved' | 'in_progress' | 'completed';
+  workflow_status: 'requested' | 'approved' | 'rejected' | 'in_progress' | 'completed';
+  rejection_reason?: string | null;
   priority: 'high' | 'medium' | 'low';
   progress_percent: number;
   expected_deadline: string | null;
@@ -58,6 +60,7 @@ export interface DigitalWork {
   created_by: number | null;
   capex_amount: number | null;
   estimated_saving_per_year: number | null;
+  saving_is_estimated?: boolean;
   payback_years: number | null;
   manager_comment: string | null;
   progress_comment: string | null;
@@ -104,8 +107,10 @@ interface ListResponse<T> {
 }
 
 // --- Auth ---
-export const register = async (name: string, email: string, password: string) => {
-  const res = await client.post('/api/auth/register', { name, email, password });
+export const register = async (name: string, email: string, password: string, avatar_url?: string | null) => {
+  const res = await client.post('/api/auth/register', { name, email, password, avatar_url });
+  if (!res.data?.id) throw new Error('Invalid registration response');
+  if (avatar_url && res.data.avatar_url !== avatar_url) throw new Error('Avatar was not saved');
   return res.data as User;
 };
 
@@ -136,8 +141,10 @@ export const listUsers = async (page = 1) => {
   return res.data as ListResponse<User>;
 };
 
-export const createUser = async (payload: { name: string; email: string; password: string; role: Role }) => {
+export const createUser = async (payload: { name: string; email: string; password: string; role: Role; avatar_url?: string | null }) => {
   const res = await client.post('/api/users', payload);
+  if (!res.data?.id) throw new Error('Invalid user creation response');
+  if (payload.avatar_url && res.data.avatar_url !== payload.avatar_url) throw new Error('Avatar was not saved');
   return res.data as User;
 };
 
@@ -211,7 +218,7 @@ export const createTaskPlan = async (workId: number, payload: { step_name: strin
   return res.data as TaskPlan;
 };
 
-export const updateTaskPlan = async (id: number, payload: Partial<Pick<TaskPlan, 'step_name' | 'step_order' | 'status' | 'due_date' | 'progress_percent'>>) => {
+export const updateTaskPlan = async (id: number, payload: Partial<Pick<TaskPlan, 'step_name' | 'step_order' | 'status' | 'due_date' | 'progress_percent'>> & { confirm_completion?: boolean }) => {
   const res = await client.put(`/api/plans/${id}`, payload);
   return res.data as TaskPlan;
 };
@@ -226,10 +233,11 @@ export const listAttachments = async (workId: number) => {
   return res.data as { documents: WorkAttachment[] };
 };
 
-export const uploadAttachments = async (workId: number, files: File[], category?: string) => {
+export const uploadAttachments = async (workId: number, files: File[], category?: string, links: string[] = []) => {
   const formData = new FormData();
   for (const file of files) formData.append('files', file);
   if (category) formData.append('category', category);
+  if (links.length) formData.append('links', JSON.stringify(links));
 
   // Đã bỏ headers cứng để Axios tự động gắn token xác thực
   const res = await client.post(`/api/works/${workId}/attachments`, formData);
@@ -242,10 +250,21 @@ export const deleteAttachment = async (id: number) => {
 
 export const downloadAttachment = async (id: number, fileName: string) => {
   const res = await client.get(`/api/attachments/${id}/download`, { responseType: 'blob' });
-  const url = URL.createObjectURL(res.data as Blob);
+  const blob = res.data as Blob;
+  if (/\.pdf$/i.test(fileName) || blob.type === 'application/pdf') {
+    const header = await blob.slice(0, 1024).text();
+    if (!header.includes('%PDF-')) throw new Error('Invalid PDF response');
+  }
+  const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
   link.download = fileName;
+  document.body.appendChild(link);
   link.click();
-  URL.revokeObjectURL(url);
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
+export const rejectWork = async (id: number, reason: string) => {
+  const res = await client.post(`/api/works/${id}/reject`, { reason });
+  return res.data as DigitalWork & { notification_sent: boolean };
 };

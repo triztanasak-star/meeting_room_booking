@@ -1,103 +1,9 @@
-import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
+import AttachmentInput from '../../../components/AttachmentInput';
+import { isAxiosError } from 'axios';
+import UserNameInput from '../../../components/UserNameInput';
+import { forwardRef, useImperativeHandle, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DigitalWork, Project, User } from '../../../lib/db';
-
-// ✅ Ô nhập nhiều tên (PIC/Support), gõ dấu phẩy để tiếp tục gợi ý tên kế tiếp
-function MultiNameInput({
-  value,
-  onChange,
-  users,
-  placeholder,
-}: {
-  value: string;
-  onChange: (val: string) => void;
-  users: User[];
-  placeholder?: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const blurTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const segments = value.split(',');
-  const lastRaw = segments[segments.length - 1];
-  const last = lastRaw.trim().toLowerCase();
-  const chosen = segments
-    .slice(0, -1)
-    .map((s) => s.trim().toLowerCase())
-    .filter(Boolean);
-
-  const suggestions = users
-    .filter((u) => {
-      const name = (u.name ?? u.email ?? '').trim();
-      if (!name) return false;
-      const lname = name.toLowerCase();
-      if (chosen.includes(lname)) return false;
-      return !last || lname.includes(last);
-    })
-    .slice(0, 8);
-
-  const handleSelect = (name: string) => {
-    const prefix = segments.slice(0, -1).join(',').trim();
-    const newValue = (prefix ? `${prefix}, ` : '') + name + ', ';
-    onChange(newValue);
-    setOpen(false);
-    inputRef.current?.focus();
-  };
-
-  return (
-    <div style={{ position: 'relative' }}>
-      <input
-        ref={inputRef}
-        type="text"
-        className="form-control"
-        placeholder={placeholder}
-        value={value}
-        onChange={(e) => {
-          onChange(e.target.value);
-          setOpen(true);
-        }}
-        onFocus={() => setOpen(true)}
-        onBlur={() => {
-          blurTimeout.current = setTimeout(() => setOpen(false), 150);
-        }}
-      />
-      {open && suggestions.length > 0 && (
-        <div
-          className="shadow"
-          style={{
-            position: 'absolute',
-            top: '100%',
-            left: 0,
-            right: 0,
-            zIndex: 20,
-            marginTop: '2px',
-            maxHeight: '200px',
-            overflowY: 'auto',
-            background: 'var(--card-bg, #1a1d2e)',
-            border: '1px solid rgba(148, 163, 184, 0.25)',
-            borderRadius: '6px',
-          }}
-        >
-          {suggestions.map((u) => (
-            <button
-              key={u.id}
-              type="button"
-              className="dropdown-item"
-              style={{ display: 'block', width: '100%', textAlign: 'left', padding: '6px 12px' }}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                if (blurTimeout.current) clearTimeout(blurTimeout.current);
-                handleSelect(u.name ?? u.email);
-              }}
-            >
-              {u.name ?? u.email}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 export interface WorkFormValues {
   task_name: string;
@@ -117,6 +23,7 @@ export interface WorkFormValues {
   estimated_saving_per_year: string;
   payback_years: string;
   files: File[];
+  attachment_links: string;
 }
 
 export interface WorkFormModalHandle {
@@ -127,6 +34,7 @@ export interface WorkFormModalHandle {
 }
 
 interface Props {
+  onReject: (workId: number, reason: string) => Promise<boolean>;
   projects: Project[];
   users: User[];
   onSubmit: (values: WorkFormValues, editingId: number | null, isAssignMode: boolean) => Promise<void>;
@@ -150,6 +58,7 @@ const initialValues: WorkFormValues = {
   estimated_saving_per_year: '',
   payback_years: '',
   files: [],
+  attachment_links: '',
 };
 
 const FACTORY_OPTIONS = [
@@ -163,22 +72,47 @@ const FACTORY_OPTIONS = [
   'Nhà máy Xuân Mai',
 ];
 
-const WorkFormModal = forwardRef<WorkFormModalHandle, Props>(({ users, onSubmit }, ref) => {
+const WorkFormModal = forwardRef<WorkFormModalHandle, Props>(({ users, onSubmit, onReject }, ref) => {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [isAssignMode, setIsAssignMode] = useState(false);
   const [values, setValues] = useState<WorkFormValues>(initialValues);
   const [loading, setLoading] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const [showReject, setShowReject] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+  const [rejectError, setRejectError] = useState('');
+  const [rejectedSaved, setRejectedSaved] = useState(false);
+  const resetRejection = () => {
+    setSubmitError('');
+    setShowReject(false); setRejectReason(''); setRejectError(''); setRejectedSaved(false);
+  };
+  const handleReject = async () => {
+    if (editingId === null || !rejectReason.trim() || loading) return;
+    setLoading(true); setRejectError('');
+    try {
+      const sent = await onReject(editingId, rejectReason.trim());
+      if (sent) { setShowReject(false); setIsOpen(false); }
+      else {
+        setRejectedSaved(true);
+        setRejectError('Đã lưu trạng thái Không duyệt và lý do, nhưng chưa gửi được thông báo Teams. Vui lòng kiểm tra cấu hình Teams trên máy chủ.');
+      }
+    } catch {
+      setRejectError('Không thể lưu Không duyệt. Vui lòng kiểm tra trạng thái dự án và thử lại.');
+    } finally { setLoading(false); }
+  };
 
   useImperativeHandle(ref, () => ({
     openCreate: () => {
+      resetRejection();
       setEditingId(null);
       setIsAssignMode(false);
       setValues(initialValues);
       setIsOpen(true);
     },
     openEdit: (work: DigitalWork) => {
+      resetRejection();
       setEditingId(work.id);
       setIsAssignMode(false);
       setValues({
@@ -199,10 +133,12 @@ const WorkFormModal = forwardRef<WorkFormModalHandle, Props>(({ users, onSubmit 
         estimated_saving_per_year: work.estimated_saving_per_year ? String(work.estimated_saving_per_year) : '',
         payback_years: work.payback_years ? String(work.payback_years) : '',
         files: [],
+        attachment_links: '',
       });
       setIsOpen(true);
     },
     openAssign: (work: DigitalWork) => {
+      resetRejection();
       setEditingId(work.id);
       setIsAssignMode(true);
       setValues({
@@ -223,6 +159,7 @@ const WorkFormModal = forwardRef<WorkFormModalHandle, Props>(({ users, onSubmit 
         estimated_saving_per_year: work.estimated_saving_per_year ? String(work.estimated_saving_per_year) : '',
         payback_years: work.payback_years ? String(work.payback_years) : '',
         files: [],
+        attachment_links: '',
       });
       setIsOpen(true);
     },
@@ -231,10 +168,15 @@ const WorkFormModal = forwardRef<WorkFormModalHandle, Props>(({ users, onSubmit 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
+    setSubmitError('');
     try {
       setLoading(true);
       await onSubmit(values, editingId, isAssignMode);
       setIsOpen(false);
+    } catch (error) {
+      const message = isAxiosError<{ message?: string }>(error) ? error.response?.data?.message : undefined;
+      setSubmitError(message || t('workForm.submitError'));
     } finally {
       setLoading(false);
     }
@@ -255,6 +197,7 @@ const WorkFormModal = forwardRef<WorkFormModalHandle, Props>(({ users, onSubmit 
             </div>
 
             <div className="modal-body">
+              {submitError && <div className="alert alert-danger" role="alert">{submitError}</div>}
               {isAssignMode ? (
                 /* FORM GIAO CÔNG VIỆC */
                 <div className="row g-3">
@@ -347,22 +290,18 @@ const WorkFormModal = forwardRef<WorkFormModalHandle, Props>(({ users, onSubmit 
 
                   <div className="col-md-6">
                     <label className="form-label">{t('workForm.attachment')}</label>
-                    <input
-                      type="file"
-                      className="form-control"
-                      multiple
-                      onChange={(e) => {
-                        const fileList = e.target.files;
-                        const newFiles = fileList ? Array.from(fileList) : [];
-                        setValues((prev) => ({ ...prev, files: newFiles }));
-                      }}
+                    <AttachmentInput
+                      files={values.files}
+                      onFilesChange={(files) => setValues(prev => ({ ...prev, files }))}
+                      links={values.attachment_links}
+                      onLinksChange={(attachment_links) => setValues(prev => ({ ...prev, attachment_links }))}
                     />
                   </div>
 
                   {/* ✅ PIC — nhập tự do (nhiều tên, phân tách bằng dấu phẩy), lưu vào lead_project */}
                   <div className="col-md-6">
                     <label className="form-label">{t('workForm.pic')}</label>
-                    <MultiNameInput
+                    <UserNameInput multiple
                       users={users}
                       placeholder={t('workForm.picPlaceholder')}
                       value={values.lead_project}
@@ -373,7 +312,7 @@ const WorkFormModal = forwardRef<WorkFormModalHandle, Props>(({ users, onSubmit 
                   {/* ✅ Support — nhập tự do (nhiều tên, phân tách bằng dấu phẩy), lưu vào assistant */}
                   <div className="col-md-6">
                     <label className="form-label">{t('workForm.support')}</label>
-                    <MultiNameInput
+                    <UserNameInput multiple
                       users={users}
                       placeholder={t('workForm.supportPlaceholder')}
                       value={values.assistant}
@@ -472,15 +411,11 @@ const WorkFormModal = forwardRef<WorkFormModalHandle, Props>(({ users, onSubmit 
                   </div>
                   <div className="col-md-6">
                     <label className="form-label">{t('workForm.attachment')}</label>
-                    <input
-                      type="file"
-                      className="form-control"
-                      multiple
-                      onChange={(e) => {
-                        const fileList = e.target.files;
-                        const newFiles = fileList ? Array.from(fileList) : [];
-                        setValues((prev) => ({ ...prev, files: newFiles }));
-                      }}
+                    <AttachmentInput
+                      files={values.files}
+                      onFilesChange={(files) => setValues(prev => ({ ...prev, files }))}
+                      links={values.attachment_links}
+                      onLinksChange={(attachment_links) => setValues(prev => ({ ...prev, attachment_links }))}
                     />
                   </div>
                 </div>
@@ -488,6 +423,8 @@ const WorkFormModal = forwardRef<WorkFormModalHandle, Props>(({ users, onSubmit 
             </div>
 
             <div className="modal-footer">
+              {isAssignMode && editingId !== null && <button type="button" className="btn btn-outline-danger me-auto"
+                disabled={loading} onClick={() => { setRejectError(''); setShowReject(true); }}>Không duyệt</button>}
               <button type="button" className="btn btn-secondary" onClick={() => setIsOpen(false)}>
                 {t('workForm.cancel')}
               </button>
@@ -502,6 +439,31 @@ const WorkFormModal = forwardRef<WorkFormModalHandle, Props>(({ users, onSubmit 
           </form>
         </div>
       </div>
+      {showReject && <div role="dialog" aria-modal="true" aria-label="Không duyệt dự án"
+        style={{ position: 'fixed', inset: 0, zIndex: 2000, background: 'rgba(0,0,0,.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+        onKeyDown={e => { if (e.key === 'Escape' && !loading) { setShowReject(false); if (rejectedSaved) setIsOpen(false); } }}>
+        <div className="modal-content" style={{ width: 500, maxWidth: '100%' }}>
+          <form onSubmit={e => { e.preventDefault(); void handleReject(); }}>
+            <div className="modal-header"><h5 className="modal-title">Không duyệt dự án</h5></div>
+            <div className="modal-body">
+              <p className="fw-semibold">{values.task_name}</p>
+              <label htmlFor="rejection-reason" className="form-label">Lý do không duyệt <span className="text-danger">*</span></label>
+              <textarea id="rejection-reason" autoFocus required maxLength={2000} rows={4}
+                className="form-control" value={rejectReason} disabled={loading || rejectedSaved}
+                onChange={e => setRejectReason(e.target.value)} placeholder="Nhập lý do không duyệt..." />
+              <small className="text-muted">Xác nhận sẽ lưu trạng thái Không duyệt và gửi lý do đến nhóm Microsoft Teams.</small>
+              {rejectError && <div role="alert" className="alert alert-warning mt-3 mb-0">{rejectError}</div>}
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-secondary" disabled={loading}
+                onClick={() => { setShowReject(false); if (rejectedSaved) setIsOpen(false); }}>{rejectedSaved ? 'Đóng' : 'Hủy'}</button>
+              {!rejectedSaved && <button type="submit" className="btn btn-danger" disabled={loading || !rejectReason.trim()}>
+                {loading ? 'Đang xử lý...' : 'Xác nhận không duyệt'}</button>}
+            </div>
+          </form>
+        </div>
+      </div>}
+
     </div>
   );
 });

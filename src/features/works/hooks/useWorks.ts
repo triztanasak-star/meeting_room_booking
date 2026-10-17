@@ -61,7 +61,7 @@ export function useUpdateTaskPlan(workId: number) {
   return useMutation({
     mutationFn: ({ id, payload }: { id: number; payload: Parameters<typeof db.updateTaskPlan>[1] }) =>
       db.updateTaskPlan(id, payload),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['task-plans', workId] }),
+    onSuccess: () => Promise.all([queryClient.invalidateQueries({ queryKey: ['task-plans', workId] }), queryClient.invalidateQueries({ queryKey: ['works'] })]),
   });
 }
 
@@ -69,6 +69,6 @@ export function useDeleteTaskPlan(workId: number) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: db.deleteTaskPlan,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['task-plans', workId] }),
+    onSuccess: () => Promise.all([queryClient.invalidateQueries({ queryKey: ['task-plans', workId] }), queryClient.invalidateQueries({ queryKey: ['works'] })]),
   });
 }

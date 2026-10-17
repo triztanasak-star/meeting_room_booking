@@ -1,274 +1,181 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, CartesianGrid, XAxis, YAxis, Legend, PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import * as db from '../../../lib/db';
+import { calculateFinanceStats } from '../../../lib/financeStats';
 import LoadingOverlay from '../../../components/LoadingOverlay';
 import ErrorState from '../../../components/ErrorState';
 import EmptyState from '../../../components/EmptyState';
+import './DashboardPage.css';
 
-function progressBucket(percent: number): 'good' | 'warn' | 'bad' {
-  if (percent >= 80) return 'good';
-  if (percent >= 40) return 'warn';
-  return 'bad';
+const STATUS_COLORS = { pending: '#b9a2ff', inProgress: '#6860ef', late: '#fb7185', completed: '#2dd4bf' };
+type Status = keyof typeof STATUS_COLORS;
+
+function workStatus(work: db.DigitalWork, now: number): Status {
+  if (work.progress_percent >= 100) return 'completed';
+  if (work.expected_deadline) {
+    // Date-only deadlines remain valid through the end of the local calendar day.
+    const deadline = /^\d{4}-\d{2}-\d{2}$/.test(work.expected_deadline)
+      ? new Date(`${work.expected_deadline}T23:59:59.999`).getTime()
+      : new Date(work.expected_deadline).getTime();
+    if (deadline < now) return 'late';
+  }
+  return work.progress_percent > 0 ? 'inProgress' : 'pending';
+}
+
+async function loadAllWorks() {
+  const first = await db.listWorks({ page: 1, limit: 200 });
+  const documents = [...first.documents];
+  for (let page = 2; (page - 1) * first.limit < first.total; page++) {
+    const next = await db.listWorks({ page, limit: first.limit });
+    documents.push(...next.documents);
+  }
+  return documents;
 }
 
 export default function DashboardPage() {
   const { t, i18n } = useTranslation();
-  const worksQuery = useQuery({ queryKey: ['works', 'dashboard'], queryFn: () => db.listWorks({ limit: 200 }) });
-
+  const worksQuery = useQuery({ queryKey: ['works', 'dashboard'], queryFn: loadAllWorks });
+  const [now, setNow] = useState(Date.now);
+  const [includeEstimated, setIncludeEstimated] = useState(false);
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const works = useMemo(() => worksQuery.data ?? [], [worksQuery.data]);
   const locale = i18n.language === 'en' ? 'en-US' : 'vi-VN';
-  const formatBillion = (amount: number) =>
-    `${(amount / 1_000_000_000).toLocaleString(locale, { maximumFractionDigits: 2 })} ${t('finance.units.billion')} ${t('finance.units.currency')}`;
-
-  const PRIORITY_LABEL: Record<string, string> = {
-    high: t('common.priority.high'),
-    medium: t('common.priority.medium'),
-    low: t('common.priority.low'),
-  };
-
-  const works = useMemo(() => worksQuery.data?.documents ?? [], [worksQuery.data]);
-
-  const stats = useMemo(() => {
-    const total = works.length;
-    const avgProgress = total === 0 ? 0 : Math.round(works.reduce((s, w) => s + w.progress_percent, 0) / total);
-    const totalCapex = works.reduce((s, w) => s + (w.capex_amount ?? 0), 0);
-    const totalSaving = works.reduce((s, w) => s + (w.estimated_saving_per_year ?? 0), 0);
-    const paybackValues = works.filter((w) => w.payback_years !== null).map((w) => w.payback_years as number);
-    const avgPayback = paybackValues.length === 0 ? null
-      : paybackValues.reduce((s, v) => s + v, 0) / paybackValues.length;
-
-    const completed = works.filter((w) => w.progress_percent >= 100).length;
-    const notStarted = works.filter((w) => w.progress_percent === 0).length;
-    const inProgress = total - completed - notStarted;
-
-    const completedPercent = total > 0 ? ((completed / total) * 100).toFixed(1) : '0';
-    const inProgressPercent = total > 0 ? ((inProgress / total) * 100).toFixed(1) : '0';
-    const notStartedPercent = total > 0 ? ((notStarted / total) * 100).toFixed(1) : '0';
-
-    return {
-      total,
-      avgProgress,
-      totalCapex,
-      totalSaving,
-      avgPayback,
-      completed,
-      inProgress,
-      notStarted,
-      completedPercent,
-      inProgressPercent,
-      notStartedPercent
-    };
-  }, [works]);
-
-  const topProjects = useMemo(() => {
-    const groups: Record<string, { total: number; count: number }> = {};
-
-    works.forEach((work) => {
-      const key = work.task_name?.trim() || t('finance.noName');
-      if (!groups[key]) {
-        groups[key] = { total: 0, count: 0 };
-      }
-      groups[key].total += work.progress_percent ?? 0;
-      groups[key].count += 1;
-    });
-
-    return Object.entries(groups)
-      .map(([taskName, { total, count }]) => ({
-        task_name: taskName,
-        avgProgress: Math.round(total / count),
-        count: count,
-      }))
-      .sort((a, b) => b.avgProgress - a.avgProgress)
-      .slice(0, 8);
-  }, [works, t]);
-
-  const highPriorityIncomplete = useMemo(
-    () => works.filter((w) => w.priority === 'high' && w.progress_percent < 100),
-    [works],
-  );
-
-  const statusDistribution = [
-    { name: t('common.status.done'), value: stats.completed, color: '#2563eb' },
-    { name: t('common.status.in_progress'), value: stats.inProgress, color: '#0ea5e9' },
-    { name: t('common.status.pending'), value: stats.notStarted, color: '#cbd5e1' },
+  const formatBillion = (amount: number) => `${(amount / 1_000_000_000).toLocaleString(locale, { maximumFractionDigits: 2 })} ${t('finance.units.billion')} ${t('finance.units.currency')}`;
+  const statuses: { key: Status; name: string; color: string }[] = [
+    { key: 'pending', name: t('common.status.pending'), color: STATUS_COLORS.pending },
+    { key: 'inProgress', name: t('common.status.in_progress'), color: STATUS_COLORS.inProgress },
+    { key: 'late', name: t('dashboard.lateCompletion'), color: STATUS_COLORS.late },
+    { key: 'completed', name: t('common.status.done'), color: STATUS_COLORS.completed },
   ];
+  const { counts, members } = useMemo(() => {
+    const counts = { pending: 0, inProgress: 0, late: 0, completed: 0 };
+    const byPic = new Map<string, { name: string; pending: number; inProgress: number; late: number; completed: number }>();
+    works.forEach((work) => {
+      const status = workStatus(work, now);
+      counts[status]++;
+      const names = (work.lead_project?.trim() || work.assigned_to_name || '')
+        // Imported PICs can omit commas: "Mr. Tan Mr. Thinh" still means two people.
+        .replace(/\b(?:mr|mrs|ms)\.?\s+/gi, ',')
+        .split(/[,;\n/|&]+/)
+        .map(name => name.normalize('NFC').replace(/[\u200B-\u200D\uFEFF]/g, '').trim().replace(/\s+/g, ' '))
+        .filter(Boolean);
+      const seen = new Set<string>();
+      names.forEach(name => {
+        const words = name.match(/\p{L}[\p{L}\p{M}]*/gu);
+        if (!words?.length) return;
+        const normalizedName = words.join(' ').normalize('NFD').replace(/\p{M}/gu, '').toLocaleLowerCase('vi-VN');
+        if (['chua phan cong', 'unassigned'].includes(normalizedName)) return;
+        const lastName = words.at(-1)!.toLocaleLowerCase('vi-VN');
+        const key = lastName.normalize('NFD').replace(/\p{M}/gu, '').replace(/đ/g, 'd');
+        const displayName = lastName.charAt(0).toLocaleUpperCase('vi-VN') + lastName.slice(1);
+        if (seen.has(key)) return;
+        seen.add(key);
+        const member = byPic.get(key) ?? { name: displayName, pending: 0, inProgress: 0, late: 0, completed: 0 };
+        // Prefer the accented spelling when names were also entered without accents.
+        if (displayName.normalize('NFD') !== displayName) member.name = displayName;
+        member[status]++;
+        byPic.set(key, member);
+      });
+    });
+    return { counts, members: [...byPic.values()].sort((a, b) => a.name.localeCompare(b.name, locale)) };
+  }, [works, now, t, locale]);
+  const projects = useMemo(() => {
+    return works.filter(work => work.priority?.trim().toLowerCase() === 'high')
+      .map(work => ({
+        id: work.id,
+        name: [work.task_name?.trim() || t('finance.noName'), work.factory_name?.trim()].filter(Boolean).join(' - '),
+        progress: work.progress_percent ?? 0,
+      }))
+      .sort((a, b) => b.progress - a.progress);
+  }, [works, t]);
+  const financeStats = useMemo(() => calculateFinanceStats(works, includeEstimated), [works, includeEstimated]);
+  const metrics = [
+    { label: t('dashboard.totalWorks'), value: works.length, detail: t('dashboard.statusSummary', { done: counts.completed, inProgress: counts.inProgress, notStarted: counts.pending }), color: '#38d9f5' },
+    { label: t('dashboard.avgProgress'), value: `${works.length ? Math.round(works.reduce((sum, work) => sum + work.progress_percent, 0) / works.length) : 0}%`, detail: t('dashboard.acrossAllWorks'), color: '#2dd4bf' },
+    { label: t('dashboard.totalCapex'), value: formatBillion(financeStats.totalCapex), color: '#fbbf24' },
+    { label: t('dashboard.estimatedSaving'), value: formatBillion(financeStats.totalSaving), color: '#a78bfa' },
+    { label: t('dashboard.paybackTime'), value: `${financeStats.paybackPeriod} ${t('finance.units.years')}`, color: '#fb7185' },
+  ];
+  const distribution = statuses.map(status => ({ ...status, value: counts[status.key] }));
+  const tooltipStyle = { backgroundColor: '#17243b', border: '1px solid #405471', borderRadius: 10, color: '#eef5ff' };
 
   if (worksQuery.isLoading) return <LoadingOverlay />;
   if (worksQuery.isError) return <ErrorState />;
 
   return (
-    <div
-      className="dashboard-wrapper"
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '12px',
-        paddingBottom: '24px',
-      }}
-    >
-      <div className="page-header">
-        <div>
-          <h1 className="h4">{t('dashboard.title')}</h1>
-          <p className="text-muted mb-0">
-            {t('dashboard.subtitle', { count: stats.total })}
-          </p>
+    <div className="dashboard-wrapper dashboard-command">
+      <header className="dashboard-heading">
+        <div><h1>{t('dashboard.title')}</h1><p>{t('dashboard.subtitle', { count: works.length })}</p></div>
+        <span className="dashboard-date">{new Date(now).toLocaleDateString(locale)}</span>
+      </header>
+      <div>
+        <div className="form-check">
+          <input id="dashboard-include-estimated" type="checkbox" className="form-check-input"
+            checked={includeEstimated} onChange={event => setIncludeEstimated(event.target.checked)}
+            aria-describedby="dashboard-saving-scope" />
+          <label htmlFor="dashboard-include-estimated" className="form-check-label fw-semibold">{t('finance.includeEstimated')}</label>
         </div>
+        <small id="dashboard-saving-scope" className="text-muted" aria-live="polite">
+          {t(includeEstimated ? 'dashboard.allSavingsHint' : 'dashboard.actualSavingsHint')}
+        </small>
       </div>
-
-      <div className="row g-3">
-        <div className="col-md">
-          <div className="card-surface h-100">
-            <div className="text-muted small">{t('dashboard.totalWorks')}</div>
-            <div className="fs-3 fw-bold">{stats.total}</div>
-            <div className="text-muted small">
-              {t('dashboard.statusSummary', { done: stats.completed, inProgress: stats.inProgress, notStarted: stats.notStarted })}
-            </div>
-          </div>
-        </div>
-        <div className="col-md">
-          <div className="card-surface h-100">
-            <div className="text-muted small">{t('dashboard.avgProgress')}</div>
-            <div className="fs-3 fw-bold">{stats.avgProgress}%</div>
-            <div className="text-muted small">{t('dashboard.acrossAllWorks')}</div>
-          </div>
-        </div>
-        <div className="col-md">
-          <div className="card-surface h-100">
-            <div className="text-muted small">{t('dashboard.totalCapex')}</div>
-            <div className="fs-3 fw-bold">{formatBillion(stats.totalCapex)}</div>
-          </div>
-        </div>
-        <div className="col-md">
-          <div className="card-surface h-100">
-            <div className="text-muted small">{t('dashboard.estimatedSaving')}</div>
-            <div className="fs-3 fw-bold text-success">{formatBillion(stats.totalSaving)}</div>
-          </div>
-        </div>
-        <div className="col-md">
-          <div className="card-surface h-100">
-            <div className="text-muted small">{t('dashboard.paybackTime')}</div>
-            <div className="fs-3 fw-bold">{stats.avgPayback !== null ? `${stats.avgPayback.toFixed(1)} ${t('finance.units.years')}` : '—'}</div>
-          </div>
-        </div>
+      <div className="dashboard-metrics">
+        {metrics.map(metric => <section className="dashboard-panel dashboard-metric" key={metric.label} style={{ borderTopColor: metric.color }}>
+          <h2>{metric.label}</h2><strong style={{ color: metric.color }}>{metric.value}</strong>
+          {metric.detail && <p>{metric.detail}</p>}
+        </section>)}
       </div>
-
-      <div className="row g-3">
-        <div className="col-lg-7">
-          <div className="card-surface h-100">
-            <h6 className="mb-3">{t('dashboard.progressByMainWorks')}</h6>
-            {topProjects.length === 0 && <EmptyState message={t('dashboard.noWorks')} />}
-            <div className="d-flex flex-column gap-2">
-              {topProjects.map((group) => {
-                const bucket = progressBucket(group.avgProgress);
-                const barColor = bucket === 'good' ? 'var(--status-good)' : bucket === 'warn' ? 'var(--status-warn)' : 'var(--status-bad)';
-                return (
-                  <div key={group.task_name} className="d-flex align-items-center gap-2">
-                    <div className="text-truncate" style={{ width: 180, fontSize: '0.85rem' }} title={group.task_name}>
-                      {group.task_name}
-                      {group.count > 1 && (
-                        <span className="text-muted ms-1" style={{ fontSize: '0.75rem' }}>
-                          ({group.count})
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex-grow-1" style={{ height: 8, background: '#e6e9f5', borderRadius: 999 }}>
-                      <div style={{ width: `${group.avgProgress}%`, height: '100%', background: barColor, borderRadius: 999 }} />
-                    </div>
-                    <div style={{ width: 42, fontSize: '0.85rem' }} className="text-end fw-semibold">{group.avgProgress}%</div>
-                  </div>
-                );
-              })}
-            </div>
+      <div className="dashboard-overview">
+        <section className="dashboard-panel">
+          <div className="dashboard-panel-heading"><h2>{t('dashboard.progressByMainWorks')}</h2><span className="dashboard-high">High &middot; {projects.length}</span></div>
+          {!projects.length && <EmptyState message={t('dashboard.noHighPriorityProjects')} />}
+          <div className="dashboard-projects">
+            {projects.map(project => <div className="dashboard-project" key={project.id}>
+              <span className="dashboard-project-name" title={project.name}>{project.name}</span>
+              <div className="dashboard-progress" role="progressbar" aria-label={project.name} aria-valuenow={project.progress} aria-valuemin={0} aria-valuemax={100}>
+                <div style={{ width: `${project.progress}%` }} />
+              </div><strong>{project.progress}%</strong>
+            </div>)}
           </div>
+        </section>
+        <div className="dashboard-charts">
+        <section className="dashboard-panel">
+          <h2>{t('dashboard.statusDistribution')}</h2><p>{t('dashboard.rowsByCompletion')}</p>
+          {works.length ? <div className="dashboard-donut">
+            <ResponsiveContainer width="100%" height={240}><PieChart>
+              <Pie data={distribution} dataKey="value" nameKey="name" innerRadius={68} outerRadius={96} paddingAngle={3} stroke="none">
+                {distribution.map(entry => <Cell key={entry.key} fill={entry.color} />)}
+              </Pie><Tooltip contentStyle={tooltipStyle} itemStyle={{ color: '#eef5ff' }} />
+            </PieChart></ResponsiveContainer>
+            <div className="dashboard-donut-center"><strong>{works.length}</strong><small>{t('dashboard.totalWorks')}</small></div>
+          </div> : <EmptyState message={t('dashboard.noWorks')} />}
+          <div className="dashboard-statuses">{distribution.map(status => <div key={status.key}>
+            <span className="dashboard-status-label"><i style={{ background: status.color }} />{status.name}</span>
+            <strong style={{ color: status.color }}>{status.value}</strong><small>{works.length ? (status.value / works.length * 100).toFixed(1) : 0}%</small>
+          </div>)}</div>
+        </section>
+      <section className="dashboard-panel">
+        <h2>{t('dashboard.progressByPic')}</h2><p>{t('dashboard.picChartHint')}</p>
+        {!members.length ? <EmptyState message={t('dashboard.noWorks')} /> : <div className="dashboard-members-scroll">
+          <div style={{ minWidth: Math.max(320, members.length * 65) }}>
+            <ResponsiveContainer width="100%" height={360}><BarChart data={members} margin={{ top: 20, right: 20, left: 0, bottom: 12 }} barSize={32}>
+              <CartesianGrid stroke="#2a3a53" vertical={false} />
+              <XAxis dataKey="name" interval={0} tick={{ fill: '#b9c9df', fontSize: 11 }} tickFormatter={name => name.length > 16 ? `${name.slice(0, 15)}...` : name} tickLine={false} axisLine={false} height={55} />
+              <YAxis allowDecimals={false} tick={{ fill: '#8ea3bf', fontSize: 12 }} axisLine={false} tickLine={false} />
+              <Tooltip contentStyle={tooltipStyle} labelStyle={{ color: '#eef5ff' }} cursor={{ fill: '#ffffff08' }}
+                labelFormatter={(label, payload) => `${label} · ${t('dashboard.totalWorks')}: ${payload.reduce((sum, entry) => sum + Number(entry.value ?? 0), 0)}`} />
+              <Legend wrapperStyle={{ paddingTop: 12 }} />
+              {statuses.map(status => <Bar key={status.key} dataKey={status.key} name={status.name} stackId="status" fill={status.color} stroke="#142036" strokeWidth={2} />)}
+            </BarChart></ResponsiveContainer>
+          </div>
+        </div>}
+      </section>
         </div>
-
-        <div className="col-lg-5">
-          <div className="card-surface h-100 d-flex flex-column">
-            <div>
-              <h6 className="mb-1">{t('dashboard.statusDistribution')}</h6>
-              <div className="text-muted small mb-2">{t('dashboard.rowsByCompletion')}</div>
-            </div>
-
-            <div style={{ flex: 1, minHeight: '220px' }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={statusDistribution} dataKey="value" nameKey="name" innerRadius={55} outerRadius={85} paddingAngle={2}>
-                    {statusDistribution.map((entry) => (
-                      <Cell key={entry.name} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-
-            <div className="row text-center mt-2 pt-2 border-top g-0">
-              <div className="col">
-                <div className="d-flex align-items-center justify-content-center gap-1 mb-1">
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#2563eb', display: 'inline-block' }}></span>
-                  <span className="text-muted small" style={{ fontSize: '0.75rem' }}>{t('common.status.done')}</span>
-                </div>
-                <div className="fw-bold fs-5 text-primary">{stats.completed}</div>
-                <div className="text-muted" style={{ fontSize: '0.75rem' }}>{stats.completedPercent}%</div>
-              </div>
-              <div className="col border-start">
-                <div className="d-flex align-items-center justify-content-center gap-1 mb-1">
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#0ea5e9', display: 'inline-block' }}></span>
-                  <span className="text-muted small" style={{ fontSize: '0.75rem' }}>{t('common.status.in_progress')}</span>
-                </div>
-                <div className="fw-bold fs-5 text-info">{stats.inProgress}</div>
-                <div className="text-muted" style={{ fontSize: '0.75rem' }}>{stats.inProgressPercent}%</div>
-              </div>
-              <div className="col border-start">
-                <div className="d-flex align-items-center justify-content-center gap-1 mb-1">
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#cbd5e1', display: 'inline-block' }}></span>
-                  <span className="text-muted small" style={{ fontSize: '0.75rem' }}>{t('common.status.pending')}</span>
-                </div>
-                <div className="fw-bold fs-5 text-secondary">{stats.notStarted}</div>
-                <div className="text-muted" style={{ fontSize: '0.75rem' }}>{stats.notStartedPercent}%</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="card-surface">
-        <h6 className="mb-3">{t('dashboard.highPriorityPending')}</h6>
-        {highPriorityIncomplete.length === 0 && <EmptyState message={t('dashboard.noHighPriorityPending')} />}
-        {highPriorityIncomplete.length > 0 && (
-          <div className="table-responsive-wrap">
-            <table className="table align-middle mb-0">
-              <thead>
-                <tr>
-                  <th>{t('dashboard.columns.project')}</th>
-                  <th>{t('dashboard.columns.factory')}</th>
-                  <th>{t('dashboard.columns.pic')}</th>
-                  <th>{t('dashboard.columns.progress')}</th>
-                  <th>{t('dashboard.columns.percent')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {highPriorityIncomplete.map((w) => (
-                  <tr key={w.id}>
-                    <td>
-                      {w.task_name}
-                      <span className="badge-priority high ms-2">{PRIORITY_LABEL[w.priority]}</span>
-                    </td>
-                    <td>{w.factory_name || '—'}</td>
-                    <td>{w.lead_project || w.assigned_to_name || '—'}</td>
-                    <td style={{ width: 160 }}>
-                      <div style={{ height: 6, background: '#e6e9f5', borderRadius: 999 }}>
-                        <div style={{ width: `${w.progress_percent}%`, height: '100%', background: 'var(--status-bad)', borderRadius: 999 }} />
-                      </div>
-                    </td>
-                    <td>{w.progress_percent}%</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
       </div>
     </div>
   );

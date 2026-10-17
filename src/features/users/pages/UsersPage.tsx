@@ -1,8 +1,10 @@
 import { useState, type FormEvent } from 'react';
+import AvatarPicker from '../../../components/AvatarPicker';
 import { useTranslation } from 'react-i18next';
 import LoadingOverlay from '../../../components/LoadingOverlay';
 import ErrorState from '../../../components/ErrorState';
 import EmptyState from '../../../components/EmptyState';
+import UserAvatar from '../../../components/UserAvatar';
 import { useCreateUser, useUpdateUser, useUsers } from '../hooks/useUsers';
 import type { Role } from '../../../lib/db';
 
@@ -13,6 +15,9 @@ export default function UsersPage() {
   const updateUser = useUpdateUser();
 
   const [name, setName] = useState('');
+  const [avatar, setAvatar] = useState<string | null>(null);
+  const [avatarStatus, setAvatarStatus] = useState<'ready' | 'processing' | 'error'>('ready');
+  const [createError, setCreateError] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<Role>('user');
@@ -22,8 +27,13 @@ export default function UsersPage() {
 
   const handleCreate = async (event: FormEvent) => {
     event.preventDefault();
-    await createUser.mutateAsync({ name, email, password, role });
+    if (createUser.isPending || avatarStatus !== 'ready') return;
+    setCreateError(false);
+    try {
+      await createUser.mutateAsync({ name, email, password, role, avatar_url: avatar });
+    } catch { setCreateError(true); return; }
     setName('');
+    setAvatar(null);
     setEmail('');
     setPassword('');
     setRole('user');
@@ -54,6 +64,8 @@ export default function UsersPage() {
       <h1 className="h4 mb-4">{t('users.title')}</h1>
 
       <form className="card-surface mb-4" onSubmit={handleCreate}>
+        {createError && <div className="alert alert-danger" role="alert">{t('avatar.createFailed')}</div>}
+        <AvatarPicker name={name} value={avatar} onChange={setAvatar} onStatusChange={setAvatarStatus} disabled={createUser.isPending} />
         <div className="row g-2 align-items-end">
           <div className="col-md-3">
             <label className="form-label">{t('users.name')}</label>
@@ -76,7 +88,7 @@ export default function UsersPage() {
             </select>
           </div>
           <div className="col-md-2">
-            <button type="submit" className="btn btn-primary w-100" disabled={createUser.isPending}>
+            <button type="submit" className="btn btn-primary w-100" disabled={createUser.isPending || avatarStatus !== 'ready'}>
               {t('users.create')}
             </button>
           </div>
@@ -107,7 +119,7 @@ export default function UsersPage() {
 
                 return (
                   <tr key={u.id}>
-                    <td>{u.name}</td>
+                    <td><div className="d-flex align-items-center gap-2"><UserAvatar name={u.name} src={u.avatar_url} /><span>{u.name}</span></div></td>
                     <td>{u.email}</td>
                     <td>
                       <div className="d-flex align-items-center gap-2">

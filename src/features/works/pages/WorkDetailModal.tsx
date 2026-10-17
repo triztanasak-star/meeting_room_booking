@@ -35,13 +35,23 @@ function WorkAttachmentsList({ workId, category }: { workId: number; category?: 
   const handleDownload = async (
     e: React.MouseEvent,
     fileUrl?: string,
-    fileName?: string
+    fileName?: string,
+    fileId?: number,
+    mimeType?: string
   ) => {
     e.preventDefault();
     if (!fileUrl) return;
 
+    const isPdf = mimeType === 'application/pdf' || /\.pdf$/i.test(fileName || '');
+    if (isPdf && fileId) {
+      try { await db.downloadAttachment(fileId, fileName || 'document.pdf'); }
+      catch { window.alert('Không tải được PDF hợp lệ. Vui lòng kiểm tra tệp gốc hoặc quyền tải PDF trên Cloudinary.'); }
+      return;
+    }
+
     try {
       const response = await fetch(fileUrl);
+      if (!response.ok) throw new Error('Download failed');
       const blob = await response.blob();
       const blobUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -66,7 +76,7 @@ function WorkAttachmentsList({ workId, category }: { workId: number; category?: 
             href={fileUrl}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={(e) => handleDownload(e, fileUrl, file.original_name)}
+            onClick={file.mime_type === 'text/uri-list' ? undefined : (e) => handleDownload(e, fileUrl, file.original_name, file.id, file.mime_type)}
             className="text-decoration-none small d-flex align-items-center gap-1"
             style={{ cursor: 'pointer' }}
             title={file.original_name}
@@ -175,6 +185,10 @@ export default function WorkDetailModal({ work, onClose }: WorkDetailModalProps)
               </div>
             </div>
 
+            {work.workflow_status === 'rejected' && <div className="alert alert-danger">
+              <strong>{t('common.workflow.rejected')}</strong>
+              <div style={{ whiteSpace: 'pre-wrap' }}>{work.rejection_reason}</div>
+            </div>}
             <hr className="border-secondary" />
 
             {/* PHẦN 2: 4 cột đã ẩn khỏi bảng chính */}
