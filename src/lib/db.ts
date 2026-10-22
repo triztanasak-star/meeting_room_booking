@@ -55,6 +55,7 @@ export interface DigitalWork {
   project_id: number | null;
   assigned_to: number | null;
   assigned_to_name: string | null;
+  pic_users?: Pick<User, 'id' | 'name' | 'email' | 'avatar_url'>[];
   support_id: number | null;
   support_name: string | null;
   created_by: number | null;

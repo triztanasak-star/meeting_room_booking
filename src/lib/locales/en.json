@@ -211,6 +211,7 @@
       "allPriority": "All priorities",
       "allStatus": "All statuses",
       "allWorkflow": "All stages",
+      "overdueCompletion": "Overdue completion",
       "picSupportPlaceholder": "All PIC / Support",
       "expectedDeadline": "Expected completion",
       "expectedDeadlineCount": "Expected completion ({{count}})",

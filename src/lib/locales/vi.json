@@ -211,6 +211,7 @@
       "allPriority": "Tất cả mức ưu tiên",
       "allStatus": "Tất cả trạng thái",
       "allWorkflow": "Tất cả tình trạng",
+      "overdueCompletion": "Trễ hạn hoàn thành",
       "picSupportPlaceholder": "Tất cả PIC / Support",
       "expectedDeadline": "Hoàn thành dự kiến",
       "expectedDeadlineCount": "Hoàn thành dự kiến ({{count}})",

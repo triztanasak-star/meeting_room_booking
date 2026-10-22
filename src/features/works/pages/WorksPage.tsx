@@ -1,5 +1,6 @@
 import ImageGallery from '../../../components/ImageGallery';
 import UserNameInput from '../../../components/UserNameInput';
+import UserAvatar from '../../../components/UserAvatar';
 import { useMemo, useRef, useState, Fragment, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -238,7 +239,12 @@ export default function WorksPage() {
     const term = search.trim().toLowerCase();
     const picTerm = picFilter.trim().toLowerCase();
     return works.filter((w) => {
-      if (workflowFilter && w.workflow_status !== workflowFilter) return false;
+      if (workflowFilter === 'overdue') {
+        const deadline = formatDueDate(w.expected_deadline) && w.expected_deadline?.split('T')[0];
+        const today = new Date();
+        const todayDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+        if (!deadline || deadline >= todayDate || w.workflow_status === 'completed' || w.workflow_status === 'rejected') return false;
+      } else if (workflowFilter && w.workflow_status !== workflowFilter) return false;
       if (completionYear && (w.workflow_status !== 'completed' || w.completed_at?.slice(0, 4) !== completionYear)) return false;
       if (priorityFilter && w.priority !== priorityFilter) return false;
       if (statusFilter && progressBucket(w.progress_percent) !== statusFilter) return false;
@@ -372,6 +378,7 @@ export default function WorksPage() {
               <option value="rejected">{t('common.workflow.rejected')}</option>
               <option value="in_progress">{t('common.workflow.in_progress')}</option>
               <option value="completed">{t('common.workflow.completed')}</option>
+              <option value="overdue">{t('works.filters.overdueCompletion')}</option>
             </select>
             <select className="form-select" style={{ maxWidth: 180 }}
               aria-label={t('works.filters.completionYear')}
@@ -472,7 +479,7 @@ export default function WorksPage() {
                     <th style={{ minWidth: '450px', width: 'auto' }}>{t('works.columns.progressUpdate')}</th>
                     <th style={{ minWidth: '150px' }}>PIC</th>
                     <th style={{ width: '100px', minWidth: '100px' }}>{t('works.columns.statusPercent')}</th>
-                    <th style={{ width: '60px', minWidth: '60px' }} />
+                    <th style={{ width: '110px', minWidth: '110px' }} />
                   </tr>
                 </thead>
                 <tbody>
@@ -644,7 +651,27 @@ export default function WorksPage() {
                             })()}
                           </td>
                           <td style={{ minWidth: '150px', whiteSpace: 'normal', overflowWrap: 'anywhere' }}>
-                            {work.lead_project?.trim() || work.assigned_to_name || '—'}
+                            {(() => {
+                              const names = (work.lead_project?.trim() || work.assigned_to_name || '')
+                                .split(',').map(name => name.trim()).filter(Boolean);
+                              if (names.length === 0) return '—';
+                              return (
+                                <div className="d-flex flex-column gap-2">
+                                  {names.map((name, picIndex) => {
+                                    const normalizedName = name.toLowerCase();
+                                    const pic = work.pic_users?.find(person =>
+                                      person.name.trim().toLowerCase() === normalizedName ||
+                                      person.email.trim().toLowerCase() === normalizedName);
+                                    return (
+                                      <div key={`${name}-${picIndex}`} className="d-flex align-items-center gap-2">
+                                        <UserAvatar name={pic?.name || name} src={pic?.avatar_url} size={30} />
+                                        <span>{pic?.name || name}</span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            })()}
                           </td>
                           <td>
                             <span className="status-progress-bar">
@@ -652,15 +679,15 @@ export default function WorksPage() {
                             </span>
                             <span className={`status-badge ${bucket}`}>{work.progress_percent}</span>
                           </td>
-                          <td className="text-center" style={{ width: '60px', minWidth: '60px' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+                          <td style={{ width: '110px', minWidth: '110px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '2px' }}>
                               <button
                                 type="button"
                                 className="btn btn-sm btn-link"
                                 title={t('works.actions.viewDetail')}
                                 onClick={() => setSelectedWork(work)}
                               >
-                                <FiEye />
+                                <FiEye className="me-1" /> View
                               </button>
 
                               {isManagerOrAdmin && (
@@ -670,7 +697,7 @@ export default function WorksPage() {
                                   title={t('works.actions.assign')}
                                   onClick={() => formModalRef.current?.openAssign(work)}
                                 >
-                                  <FiUserPlus />
+                                  <FiUserPlus className="me-1" /> Assign
                                 </button>
                               )}
 
@@ -686,7 +713,7 @@ export default function WorksPage() {
                                   }
                                 }}
                               >
-                                <FiEdit2 />
+                                <FiEdit2 className="me-1" /> Update
                               </button>
 
                               {isManagerOrAdmin && (
@@ -701,7 +728,7 @@ export default function WorksPage() {
                                     }
                                   }}
                                 >
-                                  <FiTrash2 />
+                                  <FiTrash2 className="me-1" /> Delete
                                 </button>
                               )}
                             </div>
