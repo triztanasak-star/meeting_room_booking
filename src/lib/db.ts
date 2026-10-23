@@ -44,6 +44,7 @@ export interface DigitalWork {
   rejection_reason?: string | null;
   priority: 'high' | 'medium' | 'low';
   progress_percent: number;
+  progress_increased_at?: string | null;
   expected_deadline: string | null;
   desired_deadline: string | null;
   completed_at: string | null;

@@ -199,6 +199,8 @@
     "unlock": "Unlock"
   },
   "works": {
+    "progressStale": "not updated",
+    "progressStaleHint": "Progress has not increased for more than {{days}} days",
     "title": "Project tracking",
     "subtitle": "List of Digital projects by factory",
     "exportExcel": "Export Excel",

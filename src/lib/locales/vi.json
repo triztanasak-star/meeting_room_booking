@@ -199,6 +199,8 @@
     "unlock": "Mở khóa"
   },
   "works": {
+    "progressStale": "chưa cập nhật",
+    "progressStaleHint": "Tiến độ chưa tăng trong hơn {{days}} ngày",
     "title": "Theo dõi dự án",
     "subtitle": "Danh sách dự án Digital theo nhà máy",
     "exportExcel": "Xuất Excel",

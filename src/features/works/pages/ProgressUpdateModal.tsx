@@ -1,3 +1,4 @@
+import ExpandablePlanName from '../../../components/ExpandablePlanName';
 import { useQueryClient } from '@tanstack/react-query';
 import AttachmentInput from '../../../components/AttachmentInput';
 import useCompletionConfirmation from '../../../components/useCompletionConfirmation';
@@ -439,17 +440,11 @@ const ProgressUpdateModal = forwardRef<ProgressUpdateModalHandle, ProgressUpdate
                         </div>
                       ) : (
                         milestones.map((item) => (
-                          <div key={item.id} className="d-flex align-items-center gap-2 p-2 progress-milestone-row">
-                            <textarea
+                          <div key={`${workId}:${item.id}`} className="d-flex align-items-center gap-2 p-2 progress-milestone-row">
+                            <ExpandablePlanName
                               className="form-control form-control-sm progress-modal-input"
                               value={item.name}
-                              rows={1}
-                              style={{ resize: 'none', overflow: 'hidden', minHeight: '31px', lineHeight: '1.4', flex: 1 }}
-                              onInput={(e: any) => {
-                                e.target.style.height = 'auto';
-                                e.target.style.height = e.target.scrollHeight + 'px';
-                              }}
-                              onChange={(e) => handleUpdateMilestone(item.id, 'name', e.target.value)}
+                              onChange={(value) => handleUpdateMilestone(item.id, 'name', value)}
                               placeholder={t('progress.milestoneNamePlaceholder')}
                             />
                             <div className="input-group input-group-sm" style={{ width: '120px', flexShrink: 0 }}>

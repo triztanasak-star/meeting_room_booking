@@ -1,3 +1,4 @@
+import ExpandablePlanName from '../../../components/ExpandablePlanName';
 import useCompletionConfirmation from '../../../components/useCompletionConfirmation';
 import { useMemo, useState, useRef, useEffect, type FormEvent } from 'react';
 import { useCreateTaskPlan, useDeleteTaskPlan, useTaskPlans, useUpdateTaskPlan } from '../hooks/useWorks';
@@ -135,7 +136,7 @@ export default function TaskPlansPanel({ workId, canEdit }: { workId: number; ca
       <ul className="list-group">
         {plans.map((plan) => (
           <li key={plan.id} className="list-group-item d-flex justify-content-between align-items-center gap-2">
-            <span className="flex-grow-1">{plan.step_name}</span>
+            <ExpandablePlanName value={plan.step_name} />
             <div className="d-flex gap-2 align-items-center">
 
               {/* 👇 INPUT DATE - MỖI DÒNG */}

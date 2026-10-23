@@ -5,7 +5,8 @@ import { useMemo, useRef, useState, Fragment, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { FiDownload, FiPlus, FiEdit2, FiTrash2, FiUserPlus, FiEye, FiMove, FiArrowUp, FiArrowDown } from 'react-icons/fi';
+import { FiDownload, FiPlus, FiEdit2, FiTrash2, FiUserPlus, FiEye, FiMove, FiArrowUp, FiArrowDown, FiClock } from 'react-icons/fi';
+import { progressFreshness } from '../progressFreshness';
 import { useAuth } from '../../../context/AuthContext';
 import LoadingOverlay from '../../../components/LoadingOverlay';
 import ErrorState from '../../../components/ErrorState';
@@ -57,6 +58,11 @@ function mapStatusKey(apiStatus?: string): 'done' | 'in_progress' | 'pending' {
 
 export default function WorksPage() {
   const { t } = useTranslation();
+  const [freshnessNow, setFreshnessNow] = useState(Date.now);
+  useEffect(() => {
+    const timer = window.setInterval(() => setFreshnessNow(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
   const queryClient = useQueryClient();
   const { user, can } = useAuth();
   const [searchParams] = useSearchParams();
@@ -678,6 +684,20 @@ export default function WorksPage() {
                               <div style={{ width: `${work.progress_percent}%`, background: barColor }} />
                             </span>
                             <span className={`status-badge ${bucket}`}>{work.progress_percent}</span>
+                            {(() => {
+                              const freshness = progressFreshness(work.progress_percent, work.progress_increased_at, freshnessNow);
+                              if (!freshness) return null;
+                              return (
+                                <div
+                                  className="d-flex align-items-center gap-1 mt-1"
+                                  style={{ color: freshness === 'danger' ? '#ef4444' : '#eab308', fontSize: '0.75rem', whiteSpace: 'nowrap' }}
+                                  title={t('works.progressStaleHint', { days: freshness === 'danger' ? 21 : 14 })}
+                                >
+                                  <FiClock size={14} aria-hidden="true" />
+                                  <span>{t('works.progressStale')}</span>
+                                </div>
+                              );
+                            })()}
                           </td>
                           <td style={{ width: '110px', minWidth: '110px' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '2px' }}>
