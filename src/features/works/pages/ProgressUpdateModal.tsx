@@ -1,5 +1,6 @@
 import ExpandablePlanName from '../../../components/ExpandablePlanName';
 import { useQueryClient } from '@tanstack/react-query';
+import { isAxiosError } from 'axios';
 import AttachmentInput from '../../../components/AttachmentInput';
 import useCompletionConfirmation from '../../../components/useCompletionConfirmation';
 import { forwardRef, useImperativeHandle, useRef, useState, type FormEvent } from 'react';
@@ -57,6 +58,7 @@ const ProgressUpdateModal = forwardRef<ProgressUpdateModalHandle, ProgressUpdate
     const [attachmentLinks, setAttachmentLinks] = useState('');
     const [afterWorkImages, setAfterWorkImages] = useState<File[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
 
     const showFinanceSection = true;
     const paybackRatio = form.capex_amount !== null
@@ -71,6 +73,7 @@ const ProgressUpdateModal = forwardRef<ProgressUpdateModalHandle, ProgressUpdate
     useImperativeHandle(ref, () => ({
       open: async (work: DigitalWork) => {
         setWorkId(work.id);
+        setSaveError(null);
         setTaskName(work.task_name || '');
         setAfterWorkImages([]);
         setAttachmentLinks('');
@@ -246,6 +249,7 @@ const ProgressUpdateModal = forwardRef<ProgressUpdateModalHandle, ProgressUpdate
     const handleSubmit = async (event: FormEvent) => {
       event.preventDefault();
       if (workId === null || dialog) return;
+      setSaveError(null);
       setIsSubmitting(true);
       try {
         const payload: Partial<ProgressFormValues> = {
@@ -269,6 +273,10 @@ const ProgressUpdateModal = forwardRef<ProgressUpdateModalHandle, ProgressUpdate
         await queryClient.invalidateQueries({ queryKey: ['work_attachments', workId] });
         await queryClient.invalidateQueries({ queryKey: ['works'] });
         handleClose();
+      } catch (error) {
+        setSaveError(isAxiosError<{ message?: string }>(error)
+          ? error.response?.data?.message || t('progress.saveError')
+          : t('progress.saveError'));
       } finally {
         setIsSubmitting(false);
       }
@@ -277,10 +285,15 @@ const ProgressUpdateModal = forwardRef<ProgressUpdateModalHandle, ProgressUpdate
     // 👈 Chấp nhận công việc: chuyển trạng thái quy trình sang "Thực hiện"
     const handleAccept = async () => {
       if (workId === null || dialog) return;
+      setSaveError(null);
       setIsSubmitting(true);
       try {
         await onSubmit(workId, { workflow_status: 'in_progress' });
         setForm((prev) => ({ ...prev, workflow_status: 'in_progress' }));
+      } catch (error) {
+        setSaveError(isAxiosError<{ message?: string }>(error)
+          ? error.response?.data?.message || t('progress.saveError')
+          : t('progress.saveError'));
       } finally {
         setIsSubmitting(false);
       }
@@ -375,6 +388,7 @@ const ProgressUpdateModal = forwardRef<ProgressUpdateModalHandle, ProgressUpdate
                 <button type="button" className="btn-close" onClick={handleClose} aria-label={t('progress.close')} />
               </div>
               <div className="modal-body">
+                {saveError && <div className="alert alert-danger" role="alert">{saveError}</div>}
                 <div className="row g-3">
 
                   {/* KẾ HOẠCH THỰC HIỆN (HẠNG MỤC) */}

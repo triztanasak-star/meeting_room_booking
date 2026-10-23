@@ -301,6 +301,7 @@
     "close": "Close"
   },
   "progress": {
+    "saveError": "Could not save the update. Please try again.",
     "annualSaving": "Savings /year (VND)",
     "projectedSaving": "Projected",
     "projectedSavingHint": "Projected savings — project not yet completed.",

@@ -301,6 +301,7 @@
     "close": "Đóng"
   },
   "progress": {
+    "saveError": "Không thể lưu cập nhật. Vui lòng thử lại.",
     "annualSaving": "Tiết kiệm /năm (VNĐ)",
     "projectedSaving": "Dự kiến",
     "projectedSavingHint": "Tiết kiệm dự kiến — dự án chưa hoàn thành.",
