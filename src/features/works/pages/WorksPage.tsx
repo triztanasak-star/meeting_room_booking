@@ -90,13 +90,20 @@ export default function WorksPage() {
   const [expandedId] = useState<number | null>(null);
   const [search, setSearch] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [statusMenuOpen, setStatusMenuOpen] = useState(false);
+  const statusMenuRef = useRef<HTMLDivElement>(null);
   const [picFilter, setPicFilter] = useState('');
   const [workflowFilter, setWorkflowFilter] = useState('');
   const [completionYear, setCompletionYear] = useState('');
   const [selectedDeadlines, setSelectedDeadlines] = useState<string[]>([]);
   const [deadlineMenuOpen, setDeadlineMenuOpen] = useState(false);
   const deadlineMenuRef = useRef<HTMLDivElement>(null);
+  const statusOptions = [
+    { value: 'pending', label: t('works.filters.statusBad') },
+    { value: 'in_progress', label: t('works.filters.statusWarn') },
+    { value: 'completed', label: t('works.filters.statusGood') },
+  ];
   const [selectedWork, setSelectedWork] = useState<DigitalWork | null>(null);
 
   // 👈 State lưu plans theo workId
@@ -199,6 +206,24 @@ export default function WorksPage() {
     return () => { cancelled = true; };
   }, [works]);
 
+  useEffect(() => {
+    if (!statusMenuOpen) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (statusMenuRef.current && !statusMenuRef.current.contains(event.target as Node)) {
+        setStatusMenuOpen(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setStatusMenuOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [statusMenuOpen]);
+
   // 👈 Đóng dropdown "Hoàn thành dự kiến" khi click ra ngoài
   useEffect(() => {
     if (!deadlineMenuOpen) return;
@@ -253,7 +278,13 @@ export default function WorksPage() {
       } else if (workflowFilter && w.workflow_status !== workflowFilter) return false;
       if (completionYear && (w.workflow_status !== 'completed' || w.completed_at?.slice(0, 4) !== completionYear)) return false;
       if (priorityFilter && w.priority !== priorityFilter) return false;
-      if (statusFilter && progressBucket(w.progress_percent) !== statusFilter) return false;
+      if (statusFilter.length > 0) {
+        const matchesStatus =
+          (statusFilter.includes('pending') && w.progress_percent === 0) ||
+          (statusFilter.includes('in_progress') && w.progress_percent > 0 && w.progress_percent < 100) ||
+          (statusFilter.includes('completed') && w.progress_percent === 100);
+        if (!matchesStatus) return false;
+      }
       if (picTerm) {
         const pic = (w.lead_project || w.assigned_to_name || '').trim().toLowerCase();
         const support = (w.assistant || w.support_name || '').trim().toLowerCase();
@@ -371,12 +402,42 @@ export default function WorksPage() {
               <option value="medium">Medium</option>
               <option value="low">Low</option>
             </select>
-            <select className="form-select" style={{ maxWidth: 180 }} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-              <option value="">{t('works.filters.allStatus')}</option>
-              <option value="good">{t('works.filters.statusGood')}</option>
-              <option value="warn">{t('works.filters.statusWarn')}</option>
-              <option value="bad">{t('works.filters.statusBad')}</option>
-            </select>
+            <div ref={statusMenuRef} style={{ position: 'relative', maxWidth: '100%' }}>
+              <button type="button" className="form-select" style={{ width: 240, maxWidth: '100%' }}
+                aria-expanded={statusMenuOpen} aria-controls="work-status-options"
+                onClick={() => setStatusMenuOpen(previous => !previous)}>
+                {statusFilter.length === 0 || statusFilter.length === statusOptions.length
+                  ? t('works.filters.allStatus')
+                  : statusFilter.length === 1
+                    ? statusOptions.find(option => option.value === statusFilter[0])?.label
+                    : `${t('works.columns.statusPercent')} (${statusFilter.length})`}
+              </button>
+              {statusMenuOpen && (
+                <div id="work-status-options" className="shadow"
+                  style={{ position: 'absolute', top: '100%', left: 0, zIndex: 20, marginTop: 4,
+                    minWidth: 270, padding: 8, borderRadius: 6,
+                    background: 'var(--color-surface)', color: 'var(--color-text)',
+                    border: '1px solid rgba(148, 163, 184, 0.25)' }}>
+                  <div className="form-check">
+                    <input type="checkbox" className="form-check-input" id="work-status-all"
+                      checked={statusFilter.length === 0 || statusFilter.length === statusOptions.length}
+                      onChange={() => setStatusFilter([])} />
+                    <label className="form-check-label" htmlFor="work-status-all">{t('works.filters.allStatus')}</label>
+                  </div>
+                  <hr className="my-2" />
+                  {statusOptions.map(option => (
+                    <div className="form-check" key={option.value}>
+                      <input type="checkbox" className="form-check-input" id={`work-status-${option.value}`}
+                        checked={statusFilter.includes(option.value)}
+                        onChange={() => setStatusFilter(previous => previous.includes(option.value)
+                          ? previous.filter(value => value !== option.value)
+                          : [...previous, option.value])} />
+                      <label className="form-check-label" htmlFor={`work-status-${option.value}`}>{option.label}</label>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
             <select className="form-select" style={{ maxWidth: 180 }} value={workflowFilter} onChange={(e) => setWorkflowFilter(e.target.value)}>
               <option value="">{t('works.filters.allWorkflow')}</option>
               <option value="requested">{t('common.workflow.requested')}</option>

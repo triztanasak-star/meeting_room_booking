@@ -219,9 +219,9 @@
       "expectedDeadlineCount": "Hoàn thành dự kiến ({{count}})",
       "all": "Tất cả",
       "noDeadlineData": "Không có dữ liệu ngày.",
-      "statusGood": "≥ 80%",
-      "statusWarn": "40 – 80%",
-      "statusBad": "< 40%"
+      "statusGood": "Đã hoàn thành",
+      "statusWarn": "Đang thực hiện (1-99%)",
+      "statusBad": "Chưa bắt đầu (0%)"
     },
     "legend": {
       "good": "≥80%",

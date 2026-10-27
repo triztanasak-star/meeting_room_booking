@@ -219,9 +219,9 @@
       "expectedDeadlineCount": "Expected completion ({{count}})",
       "all": "All",
       "noDeadlineData": "No date data.",
-      "statusGood": "≥ 80%",
-      "statusWarn": "40 – 80%",
-      "statusBad": "< 40%"
+      "statusGood": "Completed",
+      "statusWarn": "In progress (1-99%)",
+      "statusBad": "Not started (0%)"
     },
     "legend": {
       "good": "≥80%",
