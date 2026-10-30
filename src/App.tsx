@@ -1,20 +1,21 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AuthProvider } from './context/AuthContext';
-import { ThemeProvider } from './context/ThemeContext';
-import ProtectedRoute from './components/ProtectedRoute';
-import DashboardLayout from './components/DashboardLayout';
-import NotFoundPage from './components/NotFoundPage';
-import ForbiddenPage from './components/ForbiddenPage';
-import LoginPage from './features/auth/pages/LoginPage';
-import RegisterPage from './features/auth/pages/RegisterPage';
-import DashboardPage from './features/dashboard/pages/DashboardPage';
-import ProjectsPage from './features/projects/pages/ProjectsPage';
-import WorksPage from './features/works/pages/WorksPage';
-import UsersPage from './features/users/pages/UsersPage';
-import FinancePage from './features/finance/pages/FinancePage';
-import './lib/adapters/nodeAdapter'
-import './lib/db'
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { AuthProvider } from "./context/AuthContext";
+import { ThemeProvider } from "./context/ThemeContext";
+import ProtectedRoute from "./components/ProtectedRoute";
+import {
+  MeetingLayout,
+  CalendarPage,
+  RoomsPage,
+  AccessPage,
+} from "./features/meetings/MeetingApp";
+import NotFoundPage from "./components/NotFoundPage";
+import ForbiddenPage from "./components/ForbiddenPage";
+import LoginPage from "./features/auth/pages/LoginPage";
+import RegisterPage from "./features/auth/pages/RegisterPage";
+import UsersPage from "./features/users/pages/UsersPage";
+import "./lib/adapters/nodeAdapter";
+import "./lib/db";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
@@ -33,15 +34,40 @@ export default function App() {
                 path="/"
                 element={
                   <ProtectedRoute>
-                    <DashboardLayout />
+                    <MeetingLayout />
                   </ProtectedRoute>
                 }
               >
-                <Route index element={<Navigate to="/dashboard" replace />} />
-                <Route path="dashboard" element={<DashboardPage />} />
-                <Route path="projects" element={<ProjectsPage />} />
-                <Route path="works" element={<WorksPage />} />
-                <Route path="finance" element={<FinancePage />} />
+                <Route index element={<Navigate to="/calendar" replace />} />
+                <Route
+                  path="dashboard"
+                  element={<Navigate to="/calendar" replace />}
+                />
+                <Route path="calendar" element={<CalendarPage />} />
+                <Route
+                  path="my-bookings"
+                  element={<CalendarPage key="mine" view="mine" />}
+                />
+                <Route
+                  path="bookings"
+                  element={<CalendarPage key="manage" view="manage" />}
+                />
+                <Route
+                  path="rooms"
+                  element={
+                    <ProtectedRoute requireAdmin>
+                      <RoomsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="access"
+                  element={
+                    <ProtectedRoute requireAdmin>
+                      <AccessPage />
+                    </ProtectedRoute>
+                  }
+                />
                 <Route
                   path="users"
                   element={
@@ -53,7 +79,7 @@ export default function App() {
                 <Route path="403" element={<ForbiddenPage />} />
                 <Route path="*" element={<NotFoundPage />} />
               </Route>
-              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+              <Route path="*" element={<Navigate to="/calendar" replace />} />
             </Routes>
           </AuthProvider>
         </BrowserRouter>

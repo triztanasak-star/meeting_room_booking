@@ -1,5 +1,13 @@
 {
-  "avatar": {"processing": "Processing photo...", "notSaved": "The account was created but the API did not return the selected photo. Check the backend version; do not register again.", "createFailed": "Could not confirm account creation with the photo. Check the user list before retrying.","label": "Profile photo (optional)", "hint": "Choose a JPG, PNG or WebP image up to 5 MB.", "remove": "Remove photo", "error": "Unable to read image. Choose a JPG, PNG or WebP image up to 5 MB."},
+  "avatar": {
+    "processing": "Processing photo...",
+    "notSaved": "The account was created but the API did not return the selected photo. Check the backend version; do not register again.",
+    "createFailed": "Could not confirm account creation with the photo. Check the user list before retrying.",
+    "label": "Profile photo (optional)",
+    "hint": "Choose a JPG, PNG or WebP image up to 5 MB.",
+    "remove": "Remove photo",
+    "error": "Unable to read image. Choose a JPG, PNG or WebP image up to 5 MB."
+  },
   "common": {
     "noData": "No data yet.",
     "error": "Something went wrong, please try again.",
@@ -72,7 +80,7 @@
   },
   "auth": {
     "login": {
-      "title": "Sign in to Digital Work",
+      "title": "Sign in to Meeting Room Booking",
       "registerSuccess": "Registration successful, please sign in.",
       "invalidCredentials": "Incorrect email or password.",
       "email": "Email",
@@ -83,7 +91,7 @@
       "registerNow": "Sign up now"
     },
     "register": {
-      "title": "Create a Digital Work account",
+      "title": "Create a Meeting Room Booking account",
       "passwordTooShort": "Password must be at least 8 characters.",
       "passwordMismatch": "Confirmation password does not match.",
       "emailInUse": "This email is already in use.",

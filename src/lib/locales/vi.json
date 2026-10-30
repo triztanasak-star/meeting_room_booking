@@ -1,5 +1,13 @@
 {
-  "avatar": {"processing": "\u0110ang x\u1eed l\u00fd \u1ea3nh...", "notSaved": "T\u00e0i kho\u1ea3n \u0111\u00e3 t\u1ea1o nh\u01b0ng API kh\u00f4ng tr\u1ea3 v\u1ec1 \u1ea3nh \u0111\u00e3 ch\u1ecdn. Vui l\u00f2ng ki\u1ec3m tra phi\u00ean b\u1ea3n backend; kh\u00f4ng \u0111\u0103ng k\u00fd l\u1ea1i.", "createFailed": "Kh\u00f4ng x\u00e1c nh\u1eadn \u0111\u01b0\u1ee3c vi\u1ec7c t\u1ea1o t\u00e0i kho\u1ea3n k\u00e8m \u1ea3nh. Ki\u1ec3m tra danh s\u00e1ch ng\u01b0\u1eddi d\u00f9ng tr\u01b0\u1edbc khi th\u1eed l\u1ea1i.","label": "Ảnh đại diện (không bắt buộc)", "hint": "Chọn ảnh JPG, PNG hoặc WebP, tối đa 5 MB.", "remove": "Xóa ảnh", "error": "Không đọc được ảnh. Hãy chọn ảnh JPG, PNG hoặc WebP tối đa 5 MB."},
+  "avatar": {
+    "processing": "Đang xử lý ảnh...",
+    "notSaved": "Tài khoản đã tạo nhưng API không trả về ảnh đã chọn. Vui lòng kiểm tra phiên bản backend; không đăng ký lại.",
+    "createFailed": "Không xác nhận được việc tạo tài khoản kèm ảnh. Kiểm tra danh sách người dùng trước khi thử lại.",
+    "label": "Ảnh đại diện (không bắt buộc)",
+    "hint": "Chọn ảnh JPG, PNG hoặc WebP, tối đa 5 MB.",
+    "remove": "Xóa ảnh",
+    "error": "Không đọc được ảnh. Hãy chọn ảnh JPG, PNG hoặc WebP tối đa 5 MB."
+  },
   "common": {
     "noData": "Chưa có dữ liệu.",
     "error": "Có lỗi xảy ra, vui lòng thử lại.",
@@ -72,7 +80,7 @@
   },
   "auth": {
     "login": {
-      "title": "Đăng nhập Digital Work",
+      "title": "Đăng nhập hệ thống đặt phòng họp",
       "registerSuccess": "Đăng ký thành công, vui lòng đăng nhập.",
       "invalidCredentials": "Email hoặc mật khẩu không đúng.",
       "email": "Email",
@@ -83,7 +91,7 @@
       "registerNow": "Đăng ký ngay"
     },
     "register": {
-      "title": "Đăng ký tài khoản Digital Work",
+      "title": "Đăng ký tài khoản Meeting Room Booking",
       "passwordTooShort": "Mật khẩu phải có ít nhất 8 ký tự.",
       "passwordMismatch": "Mật khẩu xác nhận không khớp.",
       "emailInUse": "Email này đã được sử dụng.",
