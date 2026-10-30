@@ -870,11 +870,11 @@ export function CalendarPage({
     queryFn: () => api.bookings(date, to),
     refetchInterval: 30000,
   });
-  const selectedRoomId = selectedRoom || (view === "calendar" ? String(catalog.data?.rooms[0]?.id || "") : "all");
+  const selectedRoomId = view === "calendar" ? "all" : selectedRoom || "all";
   const rooms =
     catalog.data?.rooms.filter(
       (r) =>
-        r.id === Number(selectedRoomId) &&
+        (selectedRoomId === "all" || r.id === Number(selectedRoomId)) &&
         (!search ||
           r.name.toLowerCase().includes(search.toLowerCase()) ||
           bookings.data?.some(
@@ -978,15 +978,13 @@ export function CalendarPage({
       </div>
       <section className="mr-panel">
         <div className="mr-toolbar">
-          <div className="mr-site-tabs">
-            {view !== "calendar" && (
+          {view !== "calendar" && <div className="mr-site-tabs">
               <button
                 className={selectedRoomId === "all" ? "active" : ""}
                 onClick={() => setSelectedRoom("all")}
               >
                 {t("Tất cả")}
               </button>
-            )}
             {catalog.data.rooms.map((room) => (
               <button
                 key={room.id}
@@ -997,7 +995,7 @@ export function CalendarPage({
                 {room.name}
               </button>
             ))}
-          </div>
+          </div>}
           <label className="mr-search">
             <FiSearch />
             <input
