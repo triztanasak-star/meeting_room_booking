@@ -1,0 +1,51 @@
+.vehicle-page { max-width: 1150px; margin: auto; }
+.vehicle-page h1 { margin-bottom: 8px; }
+.vehicle-tabs,.vehicle-date { display:flex; flex-wrap:wrap; align-items:center; gap:12px; margin:18px 0; }
+.vehicle-page button { border:1px solid var(--mr-border,#ccd3dd); border-radius:8px; padding:9px 15px; cursor:pointer; background:var(--mr-surface,transparent); color:inherit; }
+.vehicle-page button[aria-pressed=true] { background:#2563eb; color:white; }
+.vehicle-page button:disabled { opacity:.5; cursor:not-allowed; }
+.vehicle-page .mr-primary { background:#2563eb; color:white; }
+.vehicle-page .vehicle-delete { color:var(--mr-danger); border-color:var(--mr-danger); background:var(--mr-danger-bg); }
+.vehicle-page input,.vehicle-page select,.vehicle-page textarea { display:block; width:100%; box-sizing:border-box; border:1px solid #9ca3af; border-radius:7px; padding:10px; background:transparent; color:inherit; }
+.vehicle-page option { color:#172033; background:white; }
+.vehicle-page textarea { min-height:80px; resize:vertical; }
+.vehicle-page label { display:block; font-weight:500; }
+.vehicle-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin:24px 0; }
+.vehicle-card,.vehicle-stats article { padding:20px; border:1px solid #94a3b855; border-radius:12px; margin-bottom:16px; overflow-wrap:anywhere; }
+.vehicle-stats strong { display:block; font-size:30px; color:#3b82f6; }
+.vehicle-form { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.vehicle-form h2 { grid-column:1/-1; margin:0; }
+.vehicle-check { display:flex!important; align-items:center; gap:12px; }
+.vehicle-check input { width:auto; }
+.vehicle-review { border-top:1px solid #94a3b855; padding-top:16px; margin-top:16px; }
+.vehicle-assignment { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+.vehicle-calendar-scroll { overflow-x:auto; margin:24px 0; border:1px solid var(--mr-line); border-radius:12px; background:var(--mr-surface); }
+.vehicle-calendar { width:100%; min-width:1000px; border-collapse:collapse; table-layout:fixed; }
+.vehicle-calendar caption { caption-side:bottom; padding:14px; text-align:left; color:var(--mr-muted); font-size:13px; }
+.vehicle-calendar th { height:100px; padding:12px; text-align:center; border-bottom:1px solid var(--mr-line); background:var(--mr-soft); }
+.vehicle-calendar th span,.vehicle-calendar th strong,.vehicle-calendar th small { display:block; }
+.vehicle-calendar th span { font-size:13px; color:var(--mr-muted); font-weight:500; }
+.vehicle-calendar th strong { font-size:23px; margin-top:5px; }
+.vehicle-calendar th small { color:var(--mr-blue); font-size:12px; }
+.vehicle-calendar th.is-today { background:var(--mr-accent-soft); color:var(--mr-blue); }
+.vehicle-calendar td { padding:12px; height:245px; vertical-align:top; border-right:1px solid var(--mr-line); }
+.vehicle-calendar td:last-child { border-right:0; }
+.vehicle-calendar td.is-selected { box-shadow:inset 0 0 0 2px var(--mr-blue); background:var(--mr-accent-soft); }
+.vehicle-calendar td.is-past { background:var(--mr-soft); }
+.vehicle-page .vehicle-day-select { width:100%; font-size:12px; padding:5px; background:transparent; border:0; color:var(--mr-muted); }
+.vehicle-availability { padding:12px 0; text-align:center; }
+.vehicle-availability strong,.vehicle-availability small { display:block; }
+.vehicle-availability small { color:var(--mr-muted); font-size:12px; margin-top:5px; }
+.vehicle-availability.available strong { color:var(--mr-success); }
+.vehicle-availability.full strong { color:var(--mr-danger); }
+.vehicle-page .vehicle-book-button { width:100%; padding:9px 4px; border:1px dashed var(--mr-blue); background:var(--mr-accent-soft); color:var(--mr-blue); font-weight:600; }
+.vehicle-calendar-bookings { display:grid; gap:8px; margin-top:15px; }
+.vehicle-page .vehicle-calendar-booking { text-align:left; width:100%; padding:10px; border:0; border-left:3px solid var(--mr-warning); border-radius:5px; color:var(--mr-warning); background:var(--mr-warning-bg); }
+.vehicle-page .vehicle-calendar-booking.approved { color:var(--mr-success); border-color:var(--mr-success); background:var(--mr-success-bg); }
+.vehicle-calendar-booking strong,.vehicle-calendar-booking small { display:block; overflow-wrap:anywhere; }
+.vehicle-calendar-booking strong { font-size:12px; }
+.vehicle-calendar-booking small { font-size:11px; margin-top:5px; }
+.vehicle-form-wide { grid-column:1/-1; margin:0; }
+.vehicle-page .mr-dialog { max-width:720px; }
+#vehicle-day-details { scroll-margin-top:20px; }
+@media(max-width:600px) { .vehicle-form,.vehicle-assignment { grid-template-columns:1fr; } .vehicle-stats { gap:6px; } .vehicle-stats article { padding:12px; font-size:12px; } }

@@ -16,6 +16,7 @@ import RegisterPage from "./features/auth/pages/RegisterPage";
 import UsersPage from "./features/users/pages/UsersPage";
 import "./lib/adapters/nodeAdapter";
 import "./lib/db";
+import { VehiclePage } from "./features/vehicles/VehicleApp";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
@@ -44,6 +45,7 @@ export default function App() {
                   element={<Navigate to="/calendar" replace />}
                 />
                 <Route path="calendar" element={<CalendarPage />} />
+                <Route path="vehicles" element={<VehiclePage />} />
                 <Route
                   path="my-bookings"
                   element={<CalendarPage key="mine" view="mine" />}

@@ -170,7 +170,7 @@ function Badge({ status }: { status: string }) {
   const t = useText();
   return <span className={"mr-badge " + status}>{t(statusText(status))}</span>;
 }
-function Dialog({
+export function Dialog({
   title,
   close,
   children,
@@ -252,6 +252,7 @@ export function MeetingLayout() {
     ["/calendar", "Lịch phòng họp", FiCalendar],
     ["/my-bookings", "Lịch của tôi", FiList],
     ["/bookings", "Quản lý đặt phòng", FiGrid],
+    ["/vehicles", "Đặt xe nhà máy", FiMapPin],
   ] as const;
   const admin = [
     ["/rooms", "Danh mục phòng", FiMonitor],
