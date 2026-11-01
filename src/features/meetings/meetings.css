@@ -811,6 +811,9 @@ body {
   text-align: left;
   font-weight: 500;
 }
+.mr-app[data-theme="dark"] .mr-link {
+  color: #ffffff;
+}
 .mr-shade {
   position: fixed;
   inset: 0;
