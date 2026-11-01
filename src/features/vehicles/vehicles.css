@@ -1,4 +1,8 @@
 .vehicle-page { max-width: 1150px; margin: auto; }
+.vehicle-management-scroll { overflow-x:auto; border:1px solid var(--mr-line); border-radius:12px; }
+.vehicle-management-table { width:100%; min-width:850px; border-collapse:collapse; }
+.vehicle-management-table th,.vehicle-management-table td { padding:14px; text-align:left; border-bottom:1px solid var(--mr-line); overflow-wrap:anywhere; }
+.vehicle-management-table th { background:var(--mr-soft); }
 .vehicle-page h1 { margin-bottom: 8px; }
 .vehicle-tabs,.vehicle-date { display:flex; flex-wrap:wrap; align-items:center; gap:12px; margin:18px 0; }
 .vehicle-page button { border:1px solid var(--mr-border,#ccd3dd); border-radius:8px; padding:9px 15px; cursor:pointer; background:var(--mr-surface,transparent); color:inherit; }

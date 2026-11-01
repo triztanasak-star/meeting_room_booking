@@ -253,6 +253,7 @@ export function MeetingLayout() {
     ["/my-bookings", "Lịch của tôi", FiList],
     ["/bookings", "Quản lý đặt phòng", FiGrid],
     ["/vehicles", "Đặt xe nhà máy", FiMapPin],
+    ["/vehicle-bookings", "Quản lý đặt xe", FiGrid],
   ] as const;
   const admin = [
     ["/rooms", "Danh mục phòng", FiMonitor],
@@ -272,7 +273,7 @@ export function MeetingLayout() {
         </NavLink>
         <div className="mr-nav-label">WORKSPACE</div>
         <nav>
-          {nav.map(([url, label, Icon]) => (
+          {nav.filter(([url]) => !["/bookings", "/vehicle-bookings"].includes(url) || can("manager-or-admin")).map(([url, label, Icon]) => (
             <NavLink key={url} to={url}>
               <Icon />
               {t(label)}

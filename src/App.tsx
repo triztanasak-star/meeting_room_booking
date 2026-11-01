@@ -46,6 +46,7 @@ export default function App() {
                 />
                 <Route path="calendar" element={<CalendarPage />} />
                 <Route path="vehicles" element={<VehiclePage />} />
+                <Route path="vehicle-bookings" element={<VehiclePage key="vehicle-manage" view="manage" />} />
                 <Route
                   path="my-bookings"
                   element={<CalendarPage key="mine" view="mine" />}
