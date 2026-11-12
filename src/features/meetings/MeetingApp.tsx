@@ -1,3 +1,4 @@
+import { MonthCalendar, monthRange, moveMonth } from '../../components/MonthCalendar';
 import { useEffect, useRef, useState, type FormEvent, type ChangeEvent } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -866,10 +867,12 @@ export function CalendarPage({
   const [draft, setDraft] = useState<Draft>(() => newDraft(user?.name || ""));
   const [detail, setDetail] = useState<Booking | null>(null);
   const [message, setMessage] = useState("");
-  const to = view === "calendar" ? addDays(date, 6) : endDate;
+  const range = monthRange(date);
+  const from = view === "calendar" ? range.start : date;
+  const to = view === "calendar" ? range.end : endDate;
   const bookings = useQuery({
-    queryKey: ["meeting", "bookings", date, to],
-    queryFn: () => api.bookings(date, to),
+    queryKey: ["meeting", "bookings", from, to],
+    queryFn: () => api.bookings(from, to),
     refetchInterval: 30000,
   });
   const selectedRoomId = view === "calendar" ? "all" : selectedRoom || "all";
@@ -972,7 +975,7 @@ export function CalendarPage({
               <small>
                 {label === t("Phòng họp")
                   ? "Phòng họp"
-                  : t(view === "calendar" ? "Lịch tuần" : "Danh sách")}
+                  : t(view === "calendar" ? "Lịch tháng" : "Danh sách")}
               </small>
             </div>
           );
@@ -1020,8 +1023,8 @@ export function CalendarPage({
                 </button>
                 <button
                   className="mr-icon"
-                  aria-label="Previous week"
-                  onClick={() => setDate(addDays(date, -7))}
+                  aria-label="Tháng trước"
+                  onClick={() => setDate(moveMonth(date, -1))}
                 >
                   <FiChevronLeft />
                 </button>
@@ -1033,8 +1036,8 @@ export function CalendarPage({
                 />
                 <button
                   className="mr-icon"
-                  aria-label="Next week"
-                  onClick={() => setDate(addDays(date, 7))}
+                  aria-label="Tháng sau"
+                  onClick={() => setDate(moveMonth(date, 1))}
                 >
                   <FiChevronRight />
                 </button>
@@ -1056,113 +1059,29 @@ export function CalendarPage({
             {bookings.isLoading ? (
               <p className="mr-empty">{t("Đang tải…")}</p>
             ) : (
-              <div className="mr-calendar-scroll">
-                <table className="mr-calendar">
-                  <thead>
-                    <tr>
-                      <th>{t("Phòng họp")}</th>
-                      {Array.from({ length: 7 }, (_, i) =>
-                        addDays(date, i),
-                      ).map((day) => (
-                        <th
-                          key={day}
-                          className={day === todayVN() ? "today" : ""}
-                        >
-                          <small>
-                            {new Date(day + "T12:00:00Z").toLocaleDateString(
-                              i18n.language,
-                              { weekday: "short" },
-                            )}
-                          </small>
-                          <strong>
-                            {new Date(day + "T12:00:00Z").toLocaleDateString(
-                              i18n.language,
-                              { day: "2-digit", month: "2-digit" },
-                            )}
-                          </strong>
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rooms.map((room) => (
-                      <tr key={room.id}>
-                        <th>
-                          {room.image ? (
-                            <img
-                              className="mr-calendar-room-photo"
-                              src={room.image}
-                              alt={room.name}
-                              loading="lazy"
-                            />
-                          ) : <span className="mr-room-icon">
-                            <FiMonitor />
-                          </span>}
-                          <strong>{room.name}</strong>
-                          <small>
-                            <FiUsers /> {room.capacity}
-                          </small>
-                          <small>{room.equipment}</small>
-                          {room.status === "maintenance" && (
-                            <span className="mr-badge maintenance">
-                              {t("Bảo trì")}
-                            </span>
-                          )}
-                        </th>
-                        {Array.from({ length: 7 }, (_, i) =>
-                          addDays(date, i),
-                        ).map((day) => {
-                          const events = visible.filter(
-                            (b) =>
-                              b.room_id === room.id &&
-                              b.start_date <= day &&
-                              b.end_date >= day &&
-                              ["pending", "approved"].includes(b.status),
-                          );
-                          return (
-                            <td
-                              key={day}
-                              className={day === todayVN() ? "today" : ""}
-                            >
-                              {events.map((b) => (
-                                <button
-                                  className={
-                                    "mr-event " +
-                                    b.status +
-                                    (b.created_by === user?.id ? " mine" : "")
-                                  }
-                                  key={b.id}
-                                  onClick={() => setDetail(b)}
-                                >
-                                  <span>
-                                    {b.start_time.slice(0, 5)}–
-                                    {b.end_time.slice(0, 5)}
-                                  </span>
-                                  <strong>{b.title}</strong>
-                                  <small>{b.creator_name}</small>
-                                </button>
-                              ))}
-                              {room.status === "active" && day >= todayVN() && (
-                                <button
-                                  className="mr-book-slot"
-                                  onClick={() => open(room, day)}
-                                >
-                                  <FiPlus /> Book
-                                </button>
-                              )}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {rooms.length === 0 && (
-                  <p className="mr-empty">
-                    {t("Không tìm thấy phòng phù hợp.")}
-                  </p>
-                )}
-              </div>
+              <MonthCalendar date={date} today={catalog.data.today} locale={i18n.language} sidebar={<>
+                <h3>{t("Phòng họp")}</h3>
+                {rooms.map(room => <article className="month-resource-card" key={room.id}>
+                  {room.image ? <img src={room.image} alt={room.name} loading="lazy" /> : <div className="month-resource-placeholder"><FiMonitor aria-label={t("Phòng họp")} /></div>}
+                  <strong>{room.name}</strong>
+                  <small><FiUsers /> {room.capacity}</small>
+                  <small>{room.equipment}</small>
+                  {room.status === 'maintenance' ? <span className="mr-badge maintenance">{t("Bảo trì")}</span> : <button className="mr-book-slot" onClick={() => open(room)}><FiPlus /> {t("Đặt phòng")}</button>}
+                </article>)}
+              </>} renderDay={day => {
+                const events = visible.filter(b => b.start_date <= day && b.end_date >= day && ["pending", "approved"].includes(b.status))
+                  .sort((a, b) => a.start_time.localeCompare(b.start_time) || a.id - b.id);
+                return <>
+                  {events.map(b => <button key={b.id} className={"mr-event " + b.status + (b.created_by === user?.id ? " mine" : "")}
+                    title={`${b.start_time.slice(0,5)}–${b.end_time.slice(0,5)} · ${b.room_name} · ${b.title} · ${b.creator_name}`}
+                    onClick={() => setDetail(b)}>
+                    <span>{b.start_time.slice(0,5)}–{b.end_time.slice(0,5)} · {b.room_name}</span>
+                    <strong>{b.title}</strong>
+                  </button>)}
+                  {!events.length && <small className="mr-muted">{t("Chưa có lịch đặt")}</small>}
+                  {day >= catalog.data!.today && rooms.some(r => r.status === 'active') && <button className="mr-book-slot" onClick={() => open(undefined, day)}><FiPlus /> {t("Đặt phòng")}</button>}
+                </>;
+              }} />
             )}
           </>
         ) : (

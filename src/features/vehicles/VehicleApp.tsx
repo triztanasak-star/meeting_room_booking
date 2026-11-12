@@ -1,3 +1,4 @@
+import { MonthCalendar, monthRange, moveMonth } from '../../components/MonthCalendar';
 import { useState, type FormEvent } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -13,10 +14,6 @@ interface Booking { id: number; booking_date: string; quantity: number; departur
 interface Day { today: string; can_manage: boolean; total: number; reserved: number; remaining: number; bookings: Booking[]; fleet: Resource[]; drivers: Resource[] }
 interface Access { id: number; name: string; email: string; approver: boolean }
 interface CalendarDay { date: string; total: number; reserved: number; remaining: number; bookings: Pick<Booking,'id'|'quantity'|'destination'|'status'>[] }
-function weekStart(date:string) {
-  const weekday=new Date(date+'T12:00:00Z').getUTCDay();
-  return addDays(date,-((weekday+6)%7));
-}
 const formatDay=(date:string,options:Intl.DateTimeFormatOptions)=>new Date(date+'T12:00:00Z').toLocaleDateString('vi-VN',{...options,timeZone:'Asia/Ho_Chi_Minh'});
 const labels: Record<string,string> = {pending:'Chờ duyệt',approved:'Đã duyệt',rejected:'Từ chối',cancelled:'Đã hủy'};
 const base='/api/vehicles';
@@ -30,7 +27,8 @@ export function VehiclePage({view='calendar'}:{view?:'calendar'|'manage'}) {
   const [status,setStatus]=useState('');
   const [search,setSearch]=useState('');
   const manage=view==='manage';
-  const [week,setWeek]=useState(()=>weekStart(todayVN()));
+  const [month,setMonth]=useState(todayVN());
+  const range=monthRange(month);
   const [bookingOpen,setBookingOpen]=useState(false);
   const [tab,setTab]=useState('book');
   const [error,setError]=useState('');
@@ -47,7 +45,7 @@ export function VehiclePage({view='calendar'}:{view?:'calendar'|'manage'}) {
   const [resource,setResource]=useState({id:0,name:'',plate:'',phone:'',active:true});
   const [deleting,setDeleting]=useState<Resource|null>(null);
   const day=useQuery({queryKey:['vehicles','day',date],queryFn:async()=> (await client.get<Day>(base+'/day',{params:{date}})).data,refetchInterval:15000});
-  const calendar=useQuery({queryKey:['vehicles','calendar',week],queryFn:async()=> (await client.get<{today:string;days:CalendarDay[]}>(base+'/calendar',{params:{from:week,to:addDays(week,6)}})).data,enabled:!manage&&tab==='book',refetchInterval:15000});
+  const calendar=useQuery({queryKey:['vehicles','calendar',range.start,range.end],queryFn:async()=> (await client.get<{today:string;days:CalendarDay[]}>(base+'/calendar',{params:{from:range.start,to:range.end}})).data,enabled:!manage&&tab==='book',refetchInterval:15000});
   const bookings=useQuery({queryKey:['vehicles','bookings',date,endDate],queryFn:async()=> (await client.get<Booking[]>(base+'/bookings',{params:{from:date,to:endDate}})).data,enabled:manage&&can('manager-or-admin'),refetchInterval:15000});
   const visible=bookings.data?.filter(b=>(!status||b.status===status)&&`${b.id} ${b.destination} ${b.departure_point||''} ${b.creator_name} ${b.phone} ${b.purpose} ${b.assignments.map(a=>`${a.plate} ${a.driver_name}`).join(' ')}`.toLocaleLowerCase('vi').includes(search.trim().toLocaleLowerCase('vi'))) || [];
   const access=useQuery({queryKey:['vehicles','access'],queryFn:async()=> (await client.get<Access[]>(base+'/access')).data,enabled:admin && tab==='access'});
@@ -111,22 +109,37 @@ export function VehiclePage({view='calendar'}:{view?:'calendar'|'manage'}) {
     <div className="vehicle-tabs">
       {[['book','Lịch và đặt xe'],...(admin?[['fleet','Danh mục xe'],['drivers','Tài xế'],['access','Người duyệt']]:[])].map(([key,label])=><button key={key} aria-pressed={tab===key} onClick={()=>{setTab(key);setError('');setResource({id:0,name:'',plate:'',phone:'',active:true});setReview(null);}}>{label}</button>)}
     </div>
-    <div className="vehicle-date"><button aria-label={tab==='book'?'Tuần trước':'Ngày trước'} onClick={()=>{if(tab==='book'){setWeek(addDays(week,-7));setDate(addDays(week,-7));}else setDate(addDays(date,-1));setReview(null);}}>‹</button><label>{tab==='book'?'Lịch tuần':'Ngày sử dụng xe'} <input type="date" required value={date} onChange={e=>{if(e.target.value){setDate(e.target.value);setWeek(weekStart(e.target.value));setReview(null);}}}/></label><button aria-label={tab==='book'?'Tuần sau':'Ngày sau'} onClick={()=>{if(tab==='book'){setWeek(addDays(week,7));setDate(addDays(week,7));}else setDate(addDays(date,1));setReview(null);}}>›</button><button onClick={()=>{setDate(todayVN());setWeek(weekStart(todayVN()));setReview(null);}}>Hôm nay</button>{tab==='book'&&<strong>{formatDay(week,{day:'2-digit',month:'2-digit'})} – {formatDay(addDays(week,6),{day:'2-digit',month:'2-digit',year:'numeric'})}</strong>}</div>
+    <div className="vehicle-date"><button aria-label="Tháng trước" onClick={()=>{setMonth(moveMonth(month,-1));setReview(null);}}>‹</button><label>{tab==='book'?'Lịch tháng':'Ngày sử dụng xe'} <input type="date" required value={date} onChange={e=>{if(e.target.value){setDate(e.target.value);setMonth(e.target.value);setReview(null);}}}/></label><button aria-label="Tháng sau" onClick={()=>{setMonth(moveMonth(month,1));setReview(null);}}>›</button><button onClick={()=>{setDate(todayVN());setMonth(todayVN());setReview(null);}}>Hôm nay</button></div>
     {(error||day.error||access.error||(tab==='book'&&calendar.error))&&<div role="alert" className="mr-alert error">{error||errorMessage(day.error||access.error||calendar.error)} <button onClick={()=>{void day.refetch();void calendar.refetch();if(admin&&tab==='access')void access.refetch();}}>Thử lại</button></div>}
     </>}
     {day.isPending?<p>Đang tải…</p>:d&&<>
       {!manage&&tab==='book'&&<>
-        <div className="vehicle-calendar-scroll">
-          {calendar.isPending?<p>Đang tải lịch xe…</p>:calendar.data&&<table className="vehicle-calendar"><caption>Lịch đặt xe theo tuần · Yêu cầu chờ duyệt cũng giữ chỗ xe</caption>
-            <thead><tr>{calendar.data.days.map(c=><th key={c.date} className={c.date===calendar.data.today?'is-today':''}><span>{formatDay(c.date,{weekday:'long'})}</span><strong>{formatDay(c.date,{day:'2-digit',month:'2-digit'})}</strong>{c.date===calendar.data.today&&<small>Hôm nay</small>}</th>)}</tr></thead>
-            <tbody><tr>{calendar.data.days.map(c=><td key={c.date} className={(c.date===date?'is-selected ':'')+(c.date<calendar.data.today?'is-past':'')}>
-              <button className="vehicle-day-select" aria-pressed={c.date===date} onClick={()=>{setDate(c.date);setReview(null);}}>Xem ngày</button>
+        {calendar.isPending?<p>Đang tải lịch xe…</p>:calendar.data&&<>
+          <MonthCalendar date={month} today={calendar.data.today} sidebar={<>
+            <h3>Xe nhà máy</h3>
+            <article className="month-resource-card">
+              <img src="/factory-car.svg" alt="Xe nhà máy" />
+              <strong>Đội xe nhà máy</strong>
+              <small>{d.total} xe hoạt động</small>
+              <small>Xem số xe còn trống trong từng ngày để đặt thêm.</small>
+            </article>
+            {d.fleet.map(vehicle => <article className="month-resource-card" key={vehicle.id}>
+              <img src="/factory-car.svg" alt={vehicle.name} loading="lazy" />
+              <strong>{vehicle.name}</strong><small>{vehicle.plate}</small>
+              <small>{vehicle.active?'Đang hoạt động':'Ngừng hoạt động'}</small>
+            </article>)}
+          </>} renderDay={day=>{
+            const c=calendar.data.days.find(c=>c.date===day);
+            if(!c)return null;
+            return <>
+              {c.bookings.map(b=><button key={b.id} className={'vehicle-calendar-booking '+b.status} title={`#${b.id} · ${b.destination} · ${b.quantity} xe · ${labels[b.status]}`} onClick={()=>open(b,c.date)}><strong>#{b.id} · {b.destination}</strong><small>{b.quantity} xe · {labels[b.status]}</small></button>)}
               <div className={'vehicle-availability '+(c.remaining?'available':'full')}><strong>{c.remaining>0?`Còn ${c.remaining} xe`:'Hết xe'}</strong><small>{c.reserved}/{c.total} xe đã giữ chỗ</small></div>
-              <button className="vehicle-book-button" disabled={busy||calendar.isFetching||c.date<calendar.data.today||c.remaining<1} onClick={()=>{setDate(c.date);setQuantity(1);setError('');setReview(null);setBookingOpen(true);}}>+ Đặt xe</button>
-              <div className="vehicle-calendar-bookings">{c.bookings.map(b=><button key={b.id} className={'vehicle-calendar-booking '+b.status} onClick={()=>open(b,c.date)}><strong>#{b.id} · {b.destination}</strong><small>{b.quantity} xe · {labels[b.status]}</small></button>)}</div>
-            </td>)}</tr></tbody>
-          </table>}
-        </div>
+              <button className="vehicle-book-button" disabled={busy||calendar.isFetching||c.date<calendar.data!.today||c.remaining<1} onClick={()=>{setDate(c.date);setQuantity(1);setError('');setReview(null);setBookingOpen(true);}}>+ Đặt xe</button>
+              <button className="vehicle-day-select" aria-pressed={c.date===date} onClick={()=>{setDate(c.date);setReview(null);}}>Xem ngày</button>
+            </>;
+          }}/>
+          <p className="mr-muted">Yêu cầu chờ duyệt cũng giữ chỗ xe.</p>
+        </>}
         <div id="vehicle-day-details" className="mr-between"><h2>Ngày {formatDay(date,{day:'2-digit',month:'2-digit',year:'numeric'})}</h2><button className="mr-primary" disabled={busy||date<d.today||d.remaining<1} onClick={()=>{setError('');setQuantity(1);setBookingOpen(true);}}>+ Đặt xe</button></div>
         <div className="vehicle-stats"><article><strong>{d.total}</strong>Xe hoạt động</article><article><strong>{d.reserved}</strong>Xe đã giữ chỗ</article><article><strong>{d.remaining}</strong>Xe còn trống</article></div>
         <p>Đặt theo ngày, mỗi xe phục vụ một yêu cầu trong ngày. Yêu cầu chờ duyệt cũng giữ số lượng xe. Người duyệt sẽ chọn xe và tài xế cụ thể.</p>

@@ -1,0 +1,29 @@
+.month-calendar-scroll { overflow-x:auto; border:1px solid var(--mr-line); border-radius:12px; margin:20px 0; background:var(--mr-surface); }
+.month-calendar { width:100%; min-width:840px; table-layout:fixed; border-collapse:collapse; }
+.month-calendar caption { caption-side:top; padding:16px; text-align:left; font-size:1.25rem; font-weight:700; color:var(--mr-text,inherit); }
+.month-calendar th { padding:12px 6px; background:var(--mr-soft); color:var(--mr-muted); text-align:center; }
+.month-calendar td { height:160px; padding:8px; vertical-align:top; border:1px solid var(--mr-line); }
+.month-calendar .outside-month { background:var(--mr-soft); }
+.month-calendar .outside-month .month-day-number { opacity:.5; }
+.month-day-number { display:inline-flex; align-items:center; justify-content:center; min-width:28px; height:28px; font-weight:600; margin-bottom:8px; }
+.month-today .month-day-number { background:var(--mr-blue,#2563eb); color:white; border-radius:50%; }
+.month-day-content { display:grid; gap:5px; }
+.month-calendar .mr-event,.vehicle-page .month-calendar .vehicle-calendar-booking { margin:0; padding:6px 8px; min-width:0; }
+.month-calendar .mr-event strong,.month-calendar .mr-event span,.month-calendar .vehicle-calendar-booking strong { display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:12px; margin:0; }
+.month-calendar .mr-event small { margin-top:2px; font-size:11px; }
+.month-calendar .vehicle-availability { padding:4px 0; }
+.month-calendar .vehicle-availability strong { font-size:12px; }
+.month-calendar .vehicle-availability small { font-size:10px; }
+.month-calendar .vehicle-book-button { font-size:12px; }
+.month-calendar .mr-book-slot { opacity:1; font-size:12px; }
+
+.month-calendar-layout { display:flex; align-items:stretch; margin:20px 0; border:1px solid var(--mr-line); border-radius:12px; overflow:hidden; }
+.month-calendar-layout > .month-calendar-scroll { flex:1; min-width:0; margin:0; border:0; border-radius:0; }
+.month-resource-sidebar { flex:0 0 185px; background:var(--mr-soft); border-right:1px solid var(--mr-line); }
+.month-resource-sidebar h3 { font-size:14px; padding:20px 16px; margin:0; border-bottom:1px solid var(--mr-line); }
+.month-resource-card { display:grid; gap:9px; padding:16px; border-bottom:1px solid var(--mr-line); }
+.month-resource-card img { width:100%; aspect-ratio:16/9; object-fit:cover; border-radius:7px; }
+.month-resource-card strong { font-size:14px; overflow-wrap:anywhere; }
+.month-resource-card small { font-size:12px; color:var(--mr-muted); overflow-wrap:anywhere; }
+.month-resource-placeholder { display:grid; place-items:center; aspect-ratio:16/9; border-radius:7px; background:var(--mr-accent-soft); color:var(--mr-blue); font-size:36px; }
+@media(max-width:600px) { .month-resource-sidebar { flex-basis:135px; } .month-resource-card { padding:10px; } .month-resource-sidebar h3 { padding:16px 10px; } }
