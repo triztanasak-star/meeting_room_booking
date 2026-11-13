@@ -100,7 +100,7 @@ export default function UsersPage() {
       {!isLoading && !isError && (data?.documents.length ?? 0) === 0 && <EmptyState message={t('users.noUsers')} />}
 
       {!isLoading && !isError && (data?.documents.length ?? 0) > 0 && (
-        <div className="card-surface p-0">
+        <div className="card-surface p-0 table-responsive">
           <table className="table mb-0 align-middle">
             <thead>
               <tr>

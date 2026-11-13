@@ -205,11 +205,14 @@ body {
   padding: 12px;
 }
 .mr-main {
+  display: flex;
+  flex-direction: column;
   margin-left: 280px;
   min-width: 0;
   flex: 1;
 }
 .mr-topbar {
+  flex-shrink: 0;
   height: 76px;
   border-bottom: 1px solid var(--mr-line);
   background: var(--mr-surface);
@@ -269,6 +272,8 @@ body {
   top: 4px;
 }
 .mr-content {
+  flex: 1;
+  width: 100%;
   max-width: 1700px;
   margin: 0 auto;
   padding: 34px;
@@ -691,6 +696,8 @@ body {
   margin: 5px 0 0;
 }
 .mr-footer {
+  flex-shrink: 0;
+  margin-top: auto;
   display: flex;
   justify-content: space-between;
   padding: 18px 34px;
@@ -1176,7 +1183,7 @@ body {
     flex-wrap: wrap;
   }
   .mr-app {
-    display: block;
+    flex-direction: column;
   }
   .mr-sidebar {
     position: static;
@@ -1336,3 +1343,140 @@ body {
 .mr-form .mr-default-toggle input[role="switch"]:checked { background: #2d49b0; }
 .mr-form .mr-default-toggle input[role="switch"]:checked::before { transform: translateX(18px); }
 .mr-form .mr-default-toggle input[role="switch"]:focus-visible { outline: 3px solid #9caef0; outline-offset: 3px; }
+
+/* Keep permission cards compact and aligned, like the room catalog. */
+.mr-access-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 290px), 1fr));
+  gap: 22px;
+  align-items: stretch;
+}
+.mr-access-grid > .mr-access-card {
+  min-width: 0;
+  margin: 0;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.mr-access-grid .mr-access-card > div:first-child {
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--mr-line);
+}
+.mr-access-grid .mr-access-card strong {
+  font-size: 1.125rem;
+  overflow-wrap: anywhere;
+}
+.mr-access-grid .mr-access-card small {
+  overflow-wrap: anywhere;
+}
+.mr-access-grid .mr-checkbox-grid {
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+.mr-access-grid .mr-checkbox-grid label {
+  align-items: flex-start;
+  line-height: 1.5;
+}
+.mr-access-grid .mr-checkbox-grid input {
+  flex-shrink: 0;
+  margin-top: 5px;
+}
+.mr-access-grid .mr-access-card > div:last-child {
+  margin-top: auto;
+  padding-top: 4px;
+}
+.mr-access-grid .mr-actions {
+  flex-wrap: wrap;
+}
+.mr-access-section {
+  margin-bottom: 32px;
+}
+.mr-access-section > h2 {
+  margin: 0 0 16px;
+  font-size: 1.25rem;
+}
+
+/* Use the available width for calendars, bookings, catalogs and access pages. */
+.mr-booking-settings { padding: 24px; margin-bottom: 24px; }
+.mr-booking-settings fieldset { border: 0; padding: 0; margin: 0; }
+.mr-booking-settings input[type="number"] { max-width: 220px; }
+.mr-content.mr-content-calendar {
+  max-width: none;
+  padding-inline: clamp(16px, 1.5vw, 28px);
+}
+
+.mr-navigation { display: flex; flex: 1; min-height: 0; flex-direction: column; overflow-y: auto; }
+.mr-mobile-menu { display: none; }
+.mr-sidebar { overflow-y: auto; }
+.mr-content > *, .mr-panel, .mr-page-heading > div, .mr-toolbar > *, .mr-form-grid > *, .mr-stats > div > div { min-width: 0; }
+.mr-page-heading, .mr-toolbar, .mr-calendar-controls, .mr-actions { gap: 12px; }
+.mr-page-heading > div { overflow-wrap: anywhere; }
+.mr-toolbar, .mr-calendar-controls, .mr-actions { flex-wrap: wrap; }
+.mr-search { max-width: 100%; }
+.mr-search input { min-width: 0; }
+.mr-table-scroll, .table-responsive { max-width: 100%; overscroll-behavior-x: contain; }
+.mr-booking-settings .mr-checkbox-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.mr-booking-settings .mr-checkbox-grid label { flex-direction: row; align-items: center; }
+.mr-booking-settings input[type="radio"] { width: auto; flex-shrink: 0; }
+
+@media (max-width: 1000px) and (min-width: 761px) {
+  .mr-topbar { padding-inline: 18px; }
+  .mr-top-actions { gap: 10px; }
+  .mr-theme-toggle span { display: none; }
+  .mr-stats { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+}
+@media (max-width: 760px) {
+  .mr-sidebar { position: relative; padding: 12px 16px; }
+  .mr-brand { margin: 0; padding-right: 110px; min-height: 44px; }
+  .mr-mobile-menu { display: inline-flex; align-items: center; justify-content: center; gap: 8px; position: absolute; right: 16px; top: 12px; min-height: 44px; padding: 8px 12px; border: 1px solid var(--mr-line); border-radius: 8px; background: var(--mr-soft); color: var(--mr-text); }
+  .mr-navigation { display: none; }
+  .mr-menu-open .mr-navigation { display: flex; max-height: 65dvh; margin-top: 14px; }
+  .mr-sidebar nav { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mr-sidebar nav a { min-height: 44px; line-height: 1.4; }
+  .mr-sidebar nav a svg { flex-shrink: 0; }
+  .mr-nav-label { display: block; margin: 14px 8px 8px; }
+  .mr-topbar { height: auto; min-height: 56px; padding: 8px 16px; gap: 8px; flex-wrap: wrap; }
+  .mr-topbar > div:first-child { font-size: 13px; }
+  .mr-top-actions { gap: 8px; margin-left: auto; }
+  .mr-top-actions select { max-width: 110px; min-height: 44px; }
+  .mr-theme-toggle span { display: none; }
+  .mr-icon { min-width: 44px; min-height: 44px; }
+  .mr-content.mr-content-calendar { padding: 20px 12px; }
+  .mr-page-heading { align-items: flex-start; }
+  .mr-page-heading > .mr-button { width: 100%; justify-content: center; min-height: 44px; }
+  .mr-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .mr-stats > div { flex-direction: column; align-items: flex-start; padding: 12px; }
+  .mr-toolbar, .mr-calendar-controls, .mr-list-filters { padding: 14px; }
+  .mr-toolbar > *, .mr-search { width: 100%; }
+  .mr-search { box-sizing: border-box; }
+  .mr-list-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .mr-list-filters label:last-child { grid-column: 1 / -1; }
+  .mr-list-filters input, .mr-list-filters select { width: 100%; min-width: 0; min-height: 44px; }
+  .mr-site-tabs { flex-wrap: nowrap; overflow-x: auto; max-width: 100%; }
+  .mr-site-tabs button { flex-shrink: 0; min-height: 44px; }
+  .mr-form-grid { grid-template-columns: minmax(0, 1fr); }
+  .mr-dialog { width: 100%; }
+  .mr-dialog > header, .mr-dialog-body, .mr-dialog footer { padding: 16px; }
+  .mr-dialog footer { flex-wrap: wrap; padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+  .mr-dialog footer .mr-button { flex: 1; min-height: 44px; }
+  .mr-details { grid-template-columns: minmax(95px, 32%) minmax(0, 1fr); gap: 12px; }
+  .mr-segment { flex-wrap: wrap; gap: 12px; }
+  .mr-room-grid, .mr-access-grid { gap: 14px; }
+  .mr-room-card > div:last-child, .mr-access-grid > .mr-access-card, .mr-booking-settings { padding: 16px; }
+  .mr-booking-settings .mr-checkbox-grid { grid-template-columns: 1fr; }
+  .mr-booking-settings input[type="number"] { max-width: 100%; }
+  .mr-booking-settings .mr-button { width: 100%; justify-content: center; min-height: 44px; }
+  .mr-notices { right: 12px; top: 120px; max-width: calc(100vw - 24px); }
+  .mr-footer { display: flex; flex-wrap: wrap; gap: 8px; }
+  .mr-content .table-responsive .table { min-width: 680px; }
+  .mr-content input, .mr-content select, .mr-content textarea { font-size: 16px; }
+}
+@media (max-width: 380px) {
+  .mr-sidebar nav { grid-template-columns: 1fr; }
+  .mr-brand { font-size: 14px; gap: 6px; }
+  .mr-brand-mark { width: 34px; height: 34px; }
+  .mr-stats { grid-template-columns: 1fr; }
+  .mr-stats > div { flex-direction: row; align-items: center; }
+  .mr-list-filters { grid-template-columns: 1fr; }
+}

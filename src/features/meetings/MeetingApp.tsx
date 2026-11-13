@@ -20,6 +20,7 @@ import {
   FiSettings,
   FiSun,
   FiMoon,
+  FiMenu,
 } from "react-icons/fi";
 import { useTranslation } from "react-i18next";
 import { changeLanguage } from "../../lib/i18n";
@@ -37,6 +38,7 @@ import {
   type Access,
 } from "./api";
 import "./meetings.css";
+import client from '../../lib/adapters/nodeAdapter';
 
 const words: Record<string, string> = {
   "Ảnh phòng": "Room photo",
@@ -51,8 +53,8 @@ const words: Record<string, string> = {
   "Xóa phòng": "Delete room",
   "Đã xóa phòng.": "Room deleted.",
   "Xác nhận xóa phòng": "Confirm deletion of room",
-  "Lịch phòng họp": "Calendar",
-  "Lịch của tôi": "My bookings",
+  "Lịch đặt phòng họp": "Calendar",
+  "Lịch đặt phòng của tôi": "My bookings",
   "Quản lý đặt phòng": "Booking management",
   "Danh mục phòng": "Room management",
   "Phân quyền phòng": "Room access",
@@ -240,6 +242,7 @@ export function MeetingLayout() {
   const { i18n } = useTranslation();
   const t = useText();
   const [notices, setNotices] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [logoutError, setLogoutError] = useState("");
   const location = useLocation();
   const catalog = useCatalog();
@@ -250,20 +253,26 @@ export function MeetingLayout() {
   });
   const qc = useQueryClient();
   const nav = [
-    ["/calendar", "Lịch phòng họp", FiCalendar],
-    ["/my-bookings", "Lịch của tôi", FiList],
+    ["/calendar", "Lịch đặt phòng họp", FiCalendar],
+    ["/my-bookings", "Lịch đặt phòng của tôi", FiList],
     ["/bookings", "Quản lý đặt phòng", FiGrid],
-    ["/vehicles", "Đặt xe nhà máy", FiMapPin],
+    ["/vehicles", "Lịch đặt xe", FiMapPin],
+    ["/my-vehicle-bookings", "Lịch đặt xe của tôi", FiList],
     ["/vehicle-bookings", "Quản lý đặt xe", FiGrid],
   ] as const;
   const admin = [
     ["/rooms", "Danh mục phòng", FiMonitor],
     ["/access", "Phân quyền phòng", FiSettings],
+    ["/vehicle-fleet", "Danh mục xe", FiMapPin],
+    ["/vehicle-access", "Phân quyền xe", FiSettings],
     ["/users", "Tài khoản", FiUsers],
   ] as const;
   return (
     <div className="mr-app" data-theme={theme}>
-      <aside className="mr-sidebar">
+      <aside className={`mr-sidebar${menuOpen ? ' mr-menu-open' : ''}`}>
+        <button className="mr-mobile-menu" aria-expanded={menuOpen} aria-controls="mr-navigation" onClick={()=>setMenuOpen(!menuOpen)}>
+          {menuOpen ? <FiX/> : <FiMenu/>}<span>{i18n.language.startsWith('en') ? 'Menu' : 'Danh mục'}</span>
+        </button>
         <NavLink to="/calendar" className="mr-brand">
           <span className="mr-brand-mark">
             <FiCalendar />
@@ -272,6 +281,7 @@ export function MeetingLayout() {
             MEETING ROOM<small>BOOKING</small>
           </span>
         </NavLink>
+        <div id="mr-navigation" className="mr-navigation" onClick={(event)=>{if((event.target as HTMLElement).closest('a'))setMenuOpen(false);}}>
         <div className="mr-nav-label">WORKSPACE</div>
         <nav>
           {nav.filter(([url]) => !["/bookings", "/vehicle-bookings"].includes(url) || can("manager-or-admin")).map(([url, label, Icon]) => (
@@ -311,6 +321,7 @@ export function MeetingLayout() {
             {t("Đăng xuất")}
           </button>
           {logoutError && <small role="alert">{logoutError}</small>}
+        </div>
         </div>
       </aside>
       <div className="mr-main">
@@ -386,7 +397,7 @@ export function MeetingLayout() {
             ))}
           </section>
         )}
-        <main className="mr-content">
+        <main className={`mr-content${["/calendar", "/vehicles", "/bookings", "/vehicle-bookings", "/my-bookings", "/my-vehicle-bookings", "/rooms", "/vehicle-fleet", "/vehicle-access", "/access", "/users"].includes(location.pathname) ? " mr-content-calendar" : ""}`}>
           {catalog.error ? (
             <NoticeError
               error={catalog.error}
@@ -454,9 +465,8 @@ function BookingForm({
   const [error, setError] = useState<unknown>(null);
   const [saving, setSaving] = useState(false);
   const room = catalog.rooms.find((r) => r.id === Number(draft.room_id));
-  const auto =
-    room && (room.is_default || room.floor_id === catalog.home_floor_id);
-  const max = addDays(catalog.today, auto ? 29 : 2);
+  const noticeDays = catalog.booking_settings.minimum_notice_days;
+  const earliestDate = addDays(catalog.today, noticeDays);
   const field = (key: keyof Draft, value: string) =>
     setDraft({
       ...draft,
@@ -555,9 +565,8 @@ function BookingForm({
             </label>
           </div>
           <div className="mr-info">
-            {t(
-              "Phòng mặc định/phòng được gán: tự duyệt, đặt trong 30 ngày. Phòng khác: chờ duyệt, đặt trong 3 ngày tính cả hôm nay.",
-            )}
+            {noticeDays ? `Phải đặt phòng trước ít nhất ${noticeDays} ngày.` : 'Có thể đặt phòng bất kỳ lúc nào, không yêu cầu số ngày đặt trước.'}
+            {' Phòng mặc định/phòng được gán: tự duyệt. Phòng khác: chờ duyệt.'}
           </div>
           <div className="mr-form-grid">
             <label>
@@ -565,8 +574,7 @@ function BookingForm({
               <input
                 type="date"
                 required
-                min={draft.id ? draft.start_date : catalog.today}
-                max={max}
+                min={draft.id ? (draft.start_date < earliestDate ? draft.start_date : earliestDate) : earliestDate}
                 value={draft.start_date}
                 onChange={(e) => field("start_date", e.target.value)}
               />
@@ -578,7 +586,6 @@ function BookingForm({
                 required
                 disabled={draft.mode === "single"}
                 min={draft.start_date}
-                max={max}
                 value={draft.end_date}
                 onChange={(e) => field("end_date", e.target.value)}
               />
@@ -918,9 +925,9 @@ export function CalendarPage({
   };
   const title =
     view === "calendar"
-      ? "Lịch phòng họp"
+      ? "Lịch đặt phòng họp"
       : view === "mine"
-        ? "Lịch của tôi"
+        ? "Lịch đặt phòng của tôi"
         : "Quản lý đặt phòng";
   if (catalog.isLoading) return <p>{t("Đang tải…")}</p>;
   if (!catalog.data) return null;
@@ -1195,20 +1202,6 @@ export function CalendarPage({
           </>
         )}
       </section>
-      <div className="mr-guide">
-        <FiCalendar />
-        <div>
-          <strong>{t("Hướng dẫn đặt phòng")}</strong>
-          <p>
-            {t(
-              "Chọn phòng họp; kiểm tra lịch trống rồi nhấn Đặt phòng.",
-            )}{" "}
-            {t(
-              "Phòng mặc định/phòng được gán: tự duyệt, đặt trong 30 ngày. Phòng khác: chờ duyệt, đặt trong 3 ngày tính cả hôm nay.",
-            )}
-          </p>
-        </div>
-      </div>
       {form && (
         <BookingForm
           catalog={catalog.data}
@@ -1248,7 +1241,8 @@ export function CalendarPage({
   );
 }
 
-function RoomImagePicker({ value, onChange, processing, onProcessing, disabled }: {
+export function RoomImagePicker({ value, onChange, processing, onProcessing, disabled, label = "Ảnh phòng" }: {
+  label?: string;
   value: string | null;
   onChange: (value: string | null) => void;
   processing: boolean;
@@ -1294,11 +1288,11 @@ function RoomImagePicker({ value, onChange, processing, onProcessing, disabled }
   return (
     <div className="mr-image-picker">
       <label>
-        {t("Ảnh phòng")}
+        {t(label)}
         <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => void choose(e)} disabled={disabled || processing} />
       </label>
       <small>{t("Chọn ảnh JPEG, PNG hoặc WebP tối đa 5 MB. Ảnh sẽ được thu gọn tự động.")}</small>
-      {value && <img className="mr-room-preview" src={value} alt={t("Ảnh phòng")} />}
+      {value && <img className="mr-room-preview" src={value} alt={t(label)} />}
       {value && <button type="button" className="mr-button secondary compact" disabled={disabled || processing} onClick={() => { onChange(null); setError(false); }}>{t("Xóa ảnh")}</button>}
       {processing && <small role="status">{t("Đang xử lý ảnh…")}</small>}
       {error && <div className="mr-alert error" role="alert">{t("Không thể đọc ảnh. Hãy chọn ảnh JPEG, PNG hoặc WebP hợp lệ, tối đa 5 MB.")}</div>}
@@ -1570,6 +1564,43 @@ function AccessRow({
     </article>
   );
 }
+export function BookingSettings({ days, vehicle = false }: { days: number; vehicle?: boolean }) {
+  const subject = vehicle ? 'xe' : 'phòng';
+  const qc = useQueryClient();
+  const [limited, setLimited] = useState(days > 0);
+  const [value, setValue] = useState(String(days || 1));
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState<unknown>(null);
+  async function save(event: FormEvent) {
+    event.preventDefault();
+    setSaving(true); setMessage(''); setError(null);
+    try {
+      if (vehicle) await client.put('/api/vehicles/booking-settings', { minimum_notice_days: limited ? Number(value) : 0 });
+      else await api.saveBookingSettings(limited ? Number(value) : 0);
+      await qc.invalidateQueries({ queryKey: vehicle ? ['vehicles'] : ['meeting', 'catalog'] });
+      setMessage(`Đã lưu cài đặt thời gian đặt ${subject}.`);
+    } catch (e) { setError(e); } finally { setSaving(false); }
+  }
+  return <section className="mr-panel mr-booking-settings">
+    <h2>Cài đặt thời gian đặt {subject}</h2>
+    <p className="mr-muted">Áp dụng cho tất cả {vehicle ? 'yêu cầu đặt xe' : 'phòng họp'}. Số ngày tính theo ngày tại Việt Nam.</p>
+    <form className="mr-form" onSubmit={save}>
+      <fieldset disabled={saving}>
+        <legend>Yêu cầu đặt trước</legend>
+        <div className="mr-checkbox-grid">
+          <label><input type="radio" name="booking-notice" checked={!limited} onChange={()=>setLimited(false)}/>Có thể đặt bất kỳ lúc nào</label>
+          <label><input type="radio" name="booking-notice" checked={limited} onChange={()=>setLimited(true)}/>Phải đặt trước ít nhất</label>
+        </div>
+        {limited && <label>Số ngày đặt trước<input type="number" min={1} max={3650} step={1} required value={value} onChange={e=>setValue(e.target.value)}/></label>}
+      </fieldset>
+      <p className="mr-muted">{limited && Number(value) >= 1 ? `Ví dụ: hôm nay đặt được lịch từ ngày ${addDays(todayVN(), Math.min(3650, Number(value)))} trở đi.` : vehicle ? 'Cho phép đặt xe trong ngày.' : 'Cho phép đặt trong ngày với giờ bắt đầu ở tương lai.'} Không giới hạn ngày đặt xa nhất. Quy tắc phê duyệt và kiểm tra trùng lịch vẫn áp dụng.</p>
+      {!!error && <NoticeError error={error}/>}
+      {message && <div className="mr-alert success" role="status">{message}</div>}
+      <button className="mr-button" disabled={saving}>{saving ? 'Đang lưu…' : 'Lưu thay đổi'}</button>
+    </form>
+  </section>;
+}
 export function AccessPage() {
   const t = useText();
   const catalog = useCatalog();
@@ -1585,15 +1616,17 @@ export function AccessPage() {
           <h1>{t("Phân quyền phòng")}</h1>
           <p className="mr-muted">
             {t(
-              "Phòng mặc định/phòng được gán: tự duyệt, đặt trong 30 ngày. Phòng khác: chờ duyệt, đặt trong 3 ngày tính cả hôm nay.",
+              "Quản lý thời gian đặt trước và người quản trị phòng họp.",
             )}
           </p>
         </div>
       </div>
+      {catalog.data && <BookingSettings key={catalog.data.booking_settings.minimum_notice_days} days={catalog.data.booking_settings.minimum_notice_days}/>}
       {access.isLoading && <p>{t("Đang tải…")}</p>}
       {access.error && (
         <NoticeError error={access.error} retry={() => void access.refetch()} />
       )}
+      <div className="mr-access-grid">
       {access.data &&
         catalog.data &&
         access.data.users.filter((u) => u.role === "admin" || u.role === "manager").map((u) => (
@@ -1604,6 +1637,7 @@ export function AccessPage() {
             catalog={catalog.data!}
           />
         ))}
+      </div>
     </>
   );
 }

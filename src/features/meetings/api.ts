@@ -24,6 +24,7 @@ export interface Room {
   site_name: string;
 }
 export interface Catalog {
+  booking_settings: { minimum_notice_days: number };
   sites: Site[];
   floors: Floor[];
   rooms: Room[];
@@ -76,6 +77,8 @@ export interface Access {
   email: { configured: boolean; pending: number; failed: number };
 }
 export const api = {
+  saveBookingSettings: async (minimum_notice_days: number) =>
+    client.put('/api/meeting/booking-settings', { minimum_notice_days }),
   catalog: async () => (await client.get<Catalog>("/api/meeting/catalog")).data,
   bookings: async (from: string, to: string) =>
     (

@@ -28,7 +28,7 @@ export function MonthCalendar({ date, today, locale = 'vi-VN', renderDay, sideba
     <caption>{new Date(date + 'T12:00:00Z').toLocaleDateString(locale, { month: 'long', year: 'numeric', timeZone: 'Asia/Ho_Chi_Minh' })}</caption>
     <thead><tr>{weeks[0].map(day => <th key={day} scope="col">{new Date(day + 'T12:00:00Z').toLocaleDateString(locale, { weekday: 'short', timeZone: 'Asia/Ho_Chi_Minh' })}</th>)}</tr></thead>
     <tbody>{weeks.map(week => <tr key={week[0]}>{week.map(day => <td key={day} className={(day.slice(0, 7) !== date.slice(0, 7) ? 'outside-month ' : '') + (day === today ? 'month-today' : '')}>
-      <time dateTime={day} className="month-day-number">{Number(day.slice(8))}{day.slice(0, 7) !== date.slice(0, 7) ? '/' + Number(day.slice(5, 7)) : ''}</time>
+      <time dateTime={day} className="month-day-number"><span className="month-mobile-date">{new Date(day + 'T12:00:00Z').toLocaleDateString(locale, { weekday: 'long', timeZone: 'Asia/Ho_Chi_Minh' })} · </span>{Number(day.slice(8))}<span className="month-mobile-date">/{Number(day.slice(5,7))}</span>{day.slice(0, 7) !== date.slice(0, 7) ? '/' + Number(day.slice(5, 7)) : ''}</time>
       <div className="month-day-content">{renderDay(day)}</div>
     </td>)}</tr>)}</tbody>
   </table></div></div>;

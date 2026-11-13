@@ -8,6 +8,7 @@
 .month-day-number { display:inline-flex; align-items:center; justify-content:center; min-width:28px; height:28px; font-weight:600; margin-bottom:8px; }
 .month-today .month-day-number { background:var(--mr-blue,#2563eb); color:white; border-radius:50%; }
 .month-day-content { display:grid; gap:5px; }
+.month-mobile-date { display: none; }
 .month-calendar .mr-event,.vehicle-page .month-calendar .vehicle-calendar-booking { margin:0; padding:6px 8px; min-width:0; }
 .month-calendar .mr-event strong,.month-calendar .mr-event span,.month-calendar .vehicle-calendar-booking strong { display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:12px; margin:0; }
 .month-calendar .mr-event small { margin-top:2px; font-size:11px; }
@@ -27,3 +28,57 @@
 .month-resource-card small { font-size:12px; color:var(--mr-muted); overflow-wrap:anywhere; }
 .month-resource-placeholder { display:grid; place-items:center; aspect-ratio:16/9; border-radius:7px; background:var(--mr-accent-soft); color:var(--mr-blue); font-size:36px; }
 @media(max-width:600px) { .month-resource-sidebar { flex-basis:135px; } .month-resource-card { padding:10px; } .month-resource-sidebar h3 { padding:16px 10px; } }
+
+/* Larger reference photos balanced against the seven calendar columns. */
+.month-resource-sidebar {
+  flex-basis: clamp(220px, 18vw, 290px);
+}
+.month-resource-sidebar h3 { padding: 20px; }
+.month-resource-card { padding: 20px; gap: 12px; }
+.month-resource-card strong { font-size: 15px; }
+.month-resource-card small { font-size: 13px; }
+@media (max-width: 1100px) {
+  .month-resource-sidebar { flex-basis: 220px; }
+  .month-resource-card { padding: 16px; }
+}
+@media (max-width: 600px) {
+  .month-calendar-layout { flex-direction: column; }
+  .month-resource-sidebar {
+    flex-basis: auto;
+    display: flex;
+    overflow-x: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--mr-line);
+  }
+  .month-resource-sidebar h3 { display: none; }
+  .month-resource-card {
+    flex: 0 0 200px;
+    align-content: start;
+    padding: 14px;
+    border-bottom: 0;
+    border-right: 1px solid var(--mr-line);
+  }
+}
+
+@media (max-width: 760px) {
+  .month-calendar-layout { flex-direction: column; }
+  .month-resource-sidebar { display: flex; flex-basis: auto; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--mr-line); }
+  .month-resource-sidebar h3 { display: none; }
+  .month-resource-card { flex: 0 0 200px; padding: 14px; align-content: start; border-right: 1px solid var(--mr-line); border-bottom: 0; }
+  .month-calendar { display: block; min-width: 0; }
+  .month-calendar caption { display: block; font-size: 20px; }
+  .month-calendar thead { display: none; }
+  .month-calendar tbody { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .month-calendar tr { display: contents; }
+  .month-calendar td { display: block; height: auto; min-height: 120px; min-width: 0; padding: 12px; }
+  .month-calendar td.outside-month { display: none; }
+  .month-mobile-date { display: inline; }
+  .month-day-number { height: auto; min-height: 32px; font-size: 14px; padding: 4px 8px; }
+  .month-today .month-day-number { border-radius: 6px; }
+  .month-calendar .mr-event { min-height: 44px; }
+  .month-calendar .mr-event strong, .month-calendar .mr-event span { white-space: normal; overflow-wrap: anywhere; }
+  .month-calendar .mr-book-slot { min-height: 44px; }
+}
+@media (max-width: 480px) {
+  .month-calendar tbody { grid-template-columns: minmax(0, 1fr); }
+}

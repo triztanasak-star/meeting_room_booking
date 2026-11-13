@@ -1,4 +1,12 @@
 .vehicle-page { max-width: 1150px; margin: auto; }
+.vehicle-management-page { max-width: none; margin: 0; }
+.vehicle-management-page .mr-search input { border: 0; padding: 0; border-radius: 0; }
+.vehicle-management-page .mr-list-filters label { display: grid; }
+.vehicle-management-page .mr-list-filters input,
+.vehicle-management-page .mr-list-filters select { border-color: var(--mr-line); border-radius: 6px; padding: 8px; background: var(--mr-surface); }
+.vehicle-management-page .mr-site-tabs button { border: 0; border-radius: 6px; }
+.vehicle-management-page .mr-site-tabs button.active { background: var(--mr-accent-soft); color: var(--mr-blue); }
+.vehicle-management-page .mr-link { border: 0; background: none; padding: 0; border-radius: 0; text-align: left; color: var(--mr-blue); font-weight: 500; }
 .vehicle-management-scroll { overflow-x:auto; border:1px solid var(--mr-line); border-radius:12px; }
 .vehicle-management-table { width:100%; min-width:850px; border-collapse:collapse; }
 .vehicle-management-table th,.vehicle-management-table td { padding:14px; text-align:left; border-bottom:1px solid var(--mr-line); overflow-wrap:anywhere; }
@@ -53,3 +61,49 @@
 .vehicle-page .mr-dialog { max-width:720px; }
 #vehicle-day-details { scroll-margin-top:20px; }
 @media(max-width:600px) { .vehicle-form,.vehicle-assignment { grid-template-columns:1fr; } .vehicle-stats { gap:6px; } .vehicle-stats article { padding:12px; font-size:12px; } }
+
+.vehicle-calendar-page { max-width: none; margin: 0; }
+.vehicle-calendar-page .mr-page-heading .mr-button { background: var(--mr-blue); color: white; border-color: var(--mr-blue); }
+.vehicle-calendar-page .mr-panel { margin-bottom: 0; }
+.vehicle-calendar-page .vehicle-month-panel { border-top: 0; border-radius: 0 0 12px 12px; }
+.vehicle-calendar-page .mr-panel:has(+ .vehicle-month-panel) { border-radius: 12px 12px 0 0; }
+.vehicle-calendar-page .mr-search input { border: 0; padding: 0; border-radius: 0; }
+.vehicle-calendar-page .mr-calendar-controls input { width: auto; }
+.vehicle-calendar-page .mr-icon { padding: 0; }
+.vehicle-calendar-page .mr-event { padding: 8px; border: 0; border-left: 3px solid; border-radius: 5px; }
+.vehicle-calendar-page .mr-book-slot { padding: 6px; border: 1px dashed var(--mr-blue); background: var(--mr-accent-soft); color: var(--mr-blue); }
+.vehicle-calendar-page .vehicle-availability { padding: 6px 0; font-size: 12px; }
+.vehicle-calendar-page .vehicle-availability small { font-size: 11px; }
+.vehicle-calendar-page .mr-event.approved { background: var(--mr-success-bg); color: var(--mr-success); border-left-color: var(--mr-success); }
+.vehicle-calendar-page .mr-event.pending { background: var(--mr-warning-bg); color: var(--mr-warning); border-left-color: var(--mr-warning); }
+
+/* Larger type in the vehicle calendar while retaining the shared room layout. */
+.vehicle-calendar-page .month-resource-sidebar h3 { font-size: 16px; }
+.vehicle-calendar-page .month-resource-card strong { font-size: 17px; }
+.vehicle-calendar-page .month-resource-card small { font-size: 15px; }
+.vehicle-calendar-page .month-calendar caption { font-size: 1.375rem; }
+.vehicle-calendar-page .month-calendar th { font-size: 16px; }
+.vehicle-calendar-page .month-day-number { font-size: 16px; }
+.vehicle-calendar-page .month-calendar .mr-event strong,
+.vehicle-calendar-page .month-calendar .mr-event span { font-size: 14px; }
+.vehicle-calendar-page .month-calendar .mr-event small { font-size: 13px; }
+.vehicle-calendar-page .month-calendar .vehicle-availability strong { font-size: 14px; }
+.vehicle-calendar-page .month-calendar .vehicle-availability small { font-size: 13px; }
+.vehicle-calendar-page .month-calendar .mr-book-slot,
+.vehicle-calendar-page .vehicle-day-select { font-size: 14px; }
+.vehicle-calendar-page .mr-legend { font-size: 14px; }
+
+@media (max-width: 760px) {
+  .vehicle-form, .vehicle-assignment { grid-template-columns: minmax(0, 1fr); }
+  .vehicle-page .mr-search { display: flex; }
+  .vehicle-page .mr-search input { width: 100%; min-width: 0; }
+  .vehicle-page .mr-dialog { max-width: 100%; }
+  .vehicle-page .mr-between { flex-wrap: wrap; }
+  .vehicle-page .mr-between h2, .vehicle-page .mr-between h3 { overflow-wrap: anywhere; }
+  .vehicle-page button { min-height: 44px; }
+  .vehicle-calendar-page .mr-calendar-controls .mr-actions { gap: 6px; }
+  .vehicle-calendar-page .mr-calendar-controls input { flex: 1; min-width: 0; width: 130px; }
+  .vehicle-stats { gap: 8px; }
+  .vehicle-stats article { padding: 12px; }
+  .vehicle-card { padding: 16px; }
+}

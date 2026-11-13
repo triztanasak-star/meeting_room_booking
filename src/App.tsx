@@ -1,3 +1,5 @@
+import { MyVehicleBookingsPage } from "./features/vehicles/MyVehicleBookingsPage";
+import { VehicleAccessPage } from "./features/vehicles/VehicleAccessPage";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "./context/AuthContext";
@@ -16,6 +18,7 @@ import RegisterPage from "./features/auth/pages/RegisterPage";
 import UsersPage from "./features/users/pages/UsersPage";
 import "./lib/adapters/nodeAdapter";
 import "./lib/db";
+import { VehicleFleetPage } from "./features/vehicles/VehicleFleetPage";
 import { VehiclePage } from "./features/vehicles/VehicleApp";
 
 const queryClient = new QueryClient({
@@ -45,6 +48,9 @@ export default function App() {
                   element={<Navigate to="/calendar" replace />}
                 />
                 <Route path="calendar" element={<CalendarPage />} />
+                <Route path="vehicle-access" element={<ProtectedRoute requireAdmin><VehicleAccessPage /></ProtectedRoute>} />
+                <Route path="vehicle-fleet" element={<ProtectedRoute requireAdmin><VehicleFleetPage /></ProtectedRoute>} />
+                <Route path="my-vehicle-bookings" element={<MyVehicleBookingsPage />} />
                 <Route path="vehicles" element={<VehiclePage />} />
                 <Route path="vehicle-bookings" element={<VehiclePage key="vehicle-manage" view="manage" />} />
                 <Route
